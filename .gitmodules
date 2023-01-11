@@ -1,0 +1,3 @@
+[submodule "head-up-display/firmware/libraries/isotp"]
+	path = head-up-display/firmware/libraries/isotp
+	url = https://github.com/lishen2/isotp-c.git
