@@ -40,6 +40,7 @@ int16_t amblight_calc(int32_t x)
 {
     double xd = x;
     double first_remap = mapd(xd, hud_settings.amblight_low, hud_settings.amblight_high, 0, 1);
+    first_remap = (first_remap < 0) ? 0 : (first_remap > 1 ? 1 : first_remap);
     double curve = hud_settings.amblight_expo;
     double adjusted = expo_curve(first_remap, curve / 100.0);
     double brite = mapd(adjusted, 0, 1, hud_settings.amblight_min, 256);
