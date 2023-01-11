@@ -61,8 +61,7 @@ typedef struct
     uint32_t amblight_high;
 
     float spdpredict_slew;
-    float spdpredict_accel;
-    float spdpredict_jerk;
+    float spdpredict_factor;
 
     uint32_t crc32;
 }
