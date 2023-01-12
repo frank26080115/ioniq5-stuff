@@ -6,10 +6,10 @@ extern uint8_t obd_poll_mode;
 extern bool obd_hasNewLog;
 extern bool obd_hasNewSpeed;
 
-
 void bringup_tests()
 {
-    bringuptest_canbusquery();
+    bringuptest_heartbeat();
+    //bringuptest_canbusquery();
     //bringuptest_canbusspy();
 }
 
@@ -71,5 +71,14 @@ void bringuptest_canbusspeed()
             obd_printLog(dynamic_cast<Print*>(&Serial));
             obd_hasNewSpeed = false;
         }
+    }
+}
+
+void bringuptest_heartbeat()
+{
+    heartbeat_init();
+    while (true)
+    {
+        heartbeat_task(millis());
     }
 }

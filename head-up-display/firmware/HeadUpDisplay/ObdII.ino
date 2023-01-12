@@ -9,10 +9,12 @@ bool     obd_debug_dump = false;
 uint32_t obd_debug_rate = 1;
 bool     obd_hasNewLog = false;
 bool     obd_hasNewSpeed = false;
+bool     obd_isResponding = false;
 
 void obd_queryTask(uint32_t tnow)
 {
     static uint8_t tick = 0;
+    static uint32_t item = 0;
 
     uint32_t qrate = 51;
     uint32_t qtimeout = 200;
@@ -23,7 +25,11 @@ void obd_queryTask(uint32_t tnow)
         qtimeout = 600;
     }
 
-    if ((obd_queryPending == false && (tnow - obd_lastQueryTime) >= qrate * obd_debug_rate) || (obd_queryPending != false && (tnow - obd_lastRespTime) >= qtimeout * obd_debug_rate))
+    if ((tnow - obd_lastRespTime) >= qtimeout) {
+        obd_isResponding = false;
+    }
+
+    if ((obd_queryPending == false && (tnow - obd_lastQueryTime) >= qrate * obd_debug_rate) || (obd_queryPending != false && obd_isResponding != false))
     {
         if (obd_poll_mode != OBDPOLLMODE_IDLE)
         {
@@ -57,13 +63,21 @@ void obd_queryTask(uint32_t tnow)
             else if (obd_poll_mode == OBDPOLLMODE_BATTLOG_SHORT)
             {
                 uint32_t tick_mod = tick % 2;
-                if (tick_mod != 0)
+                if ((tick_mod != 0 && car_data.ignition != false) || (tick_mod == 0 && car_data.ignition == false))
                 {
                     canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
                 }
+                else if (car_data.ignition == false)
+                {
+                    switch (item)
+                    {
+                        case 0:  canbus_queryEnhancedPid(OBD_PID_BATT2NDARY, 0x7E4); item++; break;
+                        default: canbus_queryEnhancedPid(OBD_PID_REALSPEED , 0x7B3); item++; break;
+                    }
+                    item = (item >= 2) ? 0 : item;
+                }
                 else
                 {
-                    static uint32_t item = 0;
                     switch (item)
                     {
                         case 0:
@@ -78,13 +92,12 @@ void obd_queryTask(uint32_t tnow)
             {
                 uint32_t tick_mod = tick % 5;
 
-                if (tick_mod != 0)
+                if ((tick_mod != 0 && car_data.ignition != false) || (tick_mod == 0 && car_data.ignition == false))
                 {
                     canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
                 }
                 else
                 {
-                    static uint32_t item = 0;
                     switch (item)
                     {
                         case  0: canbus_queryEnhancedPid(OBD_PID_BATT2NDARY, 0x7E4); item++;   break;
@@ -174,6 +187,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
         if (obd_database[pid8] != NULL)
         {
             obd_lastRespTime = millis();
+            obd_isResponding = true;
             *ptr16 = datalen;
             memcpy((void*)(&(ptr16[1])), (const void*)data, (size_t)datalen);
 

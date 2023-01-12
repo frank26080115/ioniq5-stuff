@@ -13,6 +13,8 @@
 #include <SD.h>
 #include <SPI.h>
 
+#include "esp_task_wdt.h"
+
 TaskHandle_t loop2task;
 
 vehicle_data_t car_data;
@@ -53,6 +55,7 @@ void loop2(void* pvParameters)
     {
         uint32_t now = millis();
 
+        esp_task_wdt_reset();
         vTaskDelay(5);
     }
 }
