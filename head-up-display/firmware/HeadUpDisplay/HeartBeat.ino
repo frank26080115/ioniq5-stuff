@@ -4,7 +4,7 @@ extern bool battlog_fileReady;
 extern bool obd_isResponding;
 
 CRGB heartbeat_strip[1];
-CLEDController *heartbeat_ctrler;
+CLEDController* heartbeat_ctrler;
 bool heartbeat_isOn = false;
 
 void heartbeat_init()

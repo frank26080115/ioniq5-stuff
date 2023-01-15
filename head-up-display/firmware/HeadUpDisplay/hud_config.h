@@ -18,4 +18,15 @@
 #define HUD_PIN_HEART_CLK  GPIO_NUM_12
 #define HUD_PIN_HEART_PWR  GPIO_NUM_13
 
+#define LED_STRIP_SIZE       ((8 * 6) + 1)
+#define SPEED_TICK_SPACING   6
+#define VOLT_TICK_SPACING    9
+#define SPEED_BACKFADE       8
+#define SPEED_NEEDLE_SIZE    2
+#define SPEED_MAX            120
+#define TICK_BRIGHTNESS      0xFF
+#define BAR_BRIGHTNESS       0xFF
+#define VOLT_BRIGHTNESS      0x80
+#define FADING_HEAD
+
 #endif

@@ -8,7 +8,7 @@ extern bool obd_hasNewSpeed;
 
 void bringup_tests()
 {
-    bringuptest_heartbeat();
+    //bringuptest_heartbeat();
     //bringuptest_canbusquery();
     //bringuptest_canbusspy();
 }
@@ -80,5 +80,17 @@ void bringuptest_heartbeat()
     while (true)
     {
         heartbeat_task(millis());
+    }
+}
+
+void bringuptest_stripAnimation()
+{
+    strip_init();
+    hud_animation = HUDANI_FADEIN;
+    hud_aniStep = 0;
+    while (true)
+    {
+        stripe_animate_step();
+        vTaskDelay(5 + hud_aniDelay);
     }
 }

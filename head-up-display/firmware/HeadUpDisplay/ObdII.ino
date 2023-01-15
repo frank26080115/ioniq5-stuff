@@ -4,6 +4,8 @@ uint8_t* obd_database[32] = { NULL };
 bool     obd_queryPending  = false;
 uint32_t obd_lastQueryTime = 0;
 uint32_t obd_lastRespTime  = 0;
+//uint32_t obd_firstTimeMs = 0;
+//uint32_t obd_firstTimeUs = 0;
 uint8_t  obd_poll_mode = OBDPOLLMODE_SIMPLE;
 bool     obd_debug_dump = false;
 uint32_t obd_debug_rate = 1;
@@ -187,6 +189,8 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
         if (obd_database[pid8] != NULL)
         {
             obd_lastRespTime = millis();
+            //obd_firstTimeMs = (obd_firstTimeMs == 0) ? millis() : obd_firstTimeMs;
+            //obd_firstTimeUs = (obd_firstTimeUs == 0) ? micros() : obd_firstTimeUs;
             obd_isResponding = true;
             *ptr16 = datalen;
             memcpy((void*)(&(ptr16[1])), (const void*)data, (size_t)datalen);

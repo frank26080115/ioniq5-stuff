@@ -9,6 +9,7 @@ uint32_t amblight_dump_time = 0;
 int32_t amblight_val_x1000 = -1;
 int32_t amblight_val;
 int16_t amblight_resbrite = -1;
+int16_t amblight_firstRaw = -1;
 
 void amblight_init()
 {
@@ -21,6 +22,7 @@ void amblight_task()
     if (adcBusy(HUD_PIN_AMBLIGHT) == false)
     {
         uint16_t x = adcEnd(HUD_PIN_AMBLIGHT);
+        amblight_firstRaw = (amblight_firstRaw < 0) ? x : amblight_firstRaw;
         lpf_update(x, &amblight_val_x1000, AMBLIGHT_LPF_FACTOR, AMBLIGHT_LPF_DIV);
         amblight_val = lpf_read(amblight_val_x1000, AMBLIGHT_LPF_DIV);
         adcStart(HUD_PIN_AMBLIGHT);

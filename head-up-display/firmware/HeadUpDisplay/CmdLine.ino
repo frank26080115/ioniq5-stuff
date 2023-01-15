@@ -1,21 +1,6 @@
 #include "HeadUpDisplay.h"
 #include <SerialCmdLine.h>
 
-#if 0
-void factory_reset_func(void* cmd, char* argstr, Stream* stream);
-void echo_func         (void* cmd, char* argstr, Stream* stream);
-void memcheck_func     (void* cmd, char* argstr, Stream* stream);
-void dumpsettings_func (void* cmd, char* argstr, Stream* stream);
-void reboot_func       (void* cmd, char* argstr, Stream* stream);
-void debug_func        (void* cmd, char* argstr, Stream* stream);
-void listlog_func      (void* cmd, char* argstr, Stream* stream);
-void query8_func       (void* cmd, char* argstr, Stream* stream);
-void query16_func      (void* cmd, char* argstr, Stream* stream);
-void speedcalib_func   (void* cmd, char* argstr, Stream* stream);
-void settime_func      (void* cmd, char* argstr, Stream* stream);
-#endif
-
-
 const cmd_def_t cmds[] = {
   { "factoryreset", factory_reset_func},
   { "echo"        , echo_func },

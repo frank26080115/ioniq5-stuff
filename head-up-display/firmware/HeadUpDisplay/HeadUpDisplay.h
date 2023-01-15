@@ -25,4 +25,7 @@ extern bool speedcalib_active;
 
 extern int32_t amblight_val;
 
+extern bool battlog_cardReady;
+extern bool battlog_fileReady;
+
 #endif

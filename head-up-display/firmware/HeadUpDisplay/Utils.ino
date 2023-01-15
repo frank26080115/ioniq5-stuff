@@ -143,3 +143,13 @@ double expo_curve(double x, double curve)
     }
     return y;
 }
+
+void srand_check()
+{
+    static bool has_srand = false;
+    if (has_srand) {
+        return;
+    }
+    srand(esp_random());
+    has_srand = true;
+}
