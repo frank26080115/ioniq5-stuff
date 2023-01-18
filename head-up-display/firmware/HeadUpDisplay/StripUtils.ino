@@ -34,7 +34,7 @@ bool strip_hasAllTicks()
 {
     int i;
     for (i = 0; i < LED_STRIP_SIZE; i += SPEED_TICK_SPACING) {
-        if (leds[i].b < TICK_BRIGHTNESS) {
+        if (leds[i].b < hud_settings.ledbrite_tick) {
             return false;
         }
     }
@@ -48,7 +48,7 @@ bool strip_isAllTicks()
     {
         if ((i % SPEED_TICK_SPACING) == 0)
         {
-            if (leds[i].b < TICK_BRIGHTNESS) {
+            if (leds[i].b < hud_settings.ledbrite_tick) {
                 return false;
             }
         }

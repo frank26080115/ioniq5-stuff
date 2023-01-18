@@ -63,6 +63,10 @@ typedef struct
     float spdpredict_slew;
     float spdpredict_factor;
 
+    uint8_t ledbrite_tick;
+    uint8_t ledbrite_bar;
+    uint8_t ledbrite_volt;
+
     uint32_t crc32;
 }
 settings_t;

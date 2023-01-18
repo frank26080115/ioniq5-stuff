@@ -24,9 +24,6 @@
 #define SPEED_BACKFADE       8
 #define SPEED_NEEDLE_SIZE    2
 #define SPEED_MAX            120
-#define TICK_BRIGHTNESS      0xFF
-#define BAR_BRIGHTNESS       0xFF
-#define VOLT_BRIGHTNESS      0x80
 #define FADING_HEAD
 
 #endif

@@ -11,6 +11,10 @@ void settings_default() {
   hud_settings.len = sizeof(settings_t);
 
   // set the default setting values here
+  
+  hud_settings.ledbrite_tick = 0xFF;
+  hud_settings.ledbrite_bar  = 0xFF;
+  hud_settings.ledbrite_volt = 0x80;
 }
 
 bool settings_load() {

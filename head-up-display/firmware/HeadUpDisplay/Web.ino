@@ -42,12 +42,20 @@ void web_init()
         request->send(SPIFFS, "/index.html", "text/html");
     });
 
+    server.on("/index.htm", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/index.html", "text/html");
+    });
+
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/style.css", "text/css");
     });
 
     server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/script.js", "text/javascript");
+    });
+
+    server.on("/toast.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/toast.js", "text/javascript");
     });
 
     server.on("/canvasjs.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -60,6 +68,22 @@ void web_init()
 
     server.on("/jquery-3.6.3.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/jquery-3.6.3.min.js", "text/javascript");
+    });
+
+    server.on("/jquery-ui.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/jquery-3.6.3.min.js", "text/javascript");
+    });
+
+    server.on("/jquery-ui.css", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/jquery-ui.css", "text/css");
+    });
+
+    server.on("/jquery-ui.structure.min.css", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/jquery-ui.min.css", "text/css");
+    });
+
+    server.on("/jquery-ui.theme.css", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/jquery-ui.theme.css", "text/css");
     });
 
 

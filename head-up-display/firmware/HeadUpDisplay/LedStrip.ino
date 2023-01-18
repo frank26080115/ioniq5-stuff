@@ -81,14 +81,14 @@ void strip_speedometer(double speed)
     {
         headbright  = (speed * LED_STRIP_SIZE);
         headbright  = fmodf(headbright, ((float)spdmax1));
-        headbright *= BAR_BRIGHTNESS;
+        headbright *= hud_settings.ledbrite_bar;
         headbright /= ((float)spdmax1);
         headbrighti = (int)lroundf(headbright);
     }
     else if (speed >= ((float)spdmax1))
     {
         float rmd = speed - floor(speed);
-        headbright = rmd * BAR_BRIGHTNESS;
+        headbright = rmd * hud_settings.ledbrite_bar;
         headbrighti = (int)lroundf(headbright);
         // since the bar grows from right to left in this case,
         // the "head" (on the right) is hidden by the final tick
@@ -115,12 +115,12 @@ void strip_speedometer(double speed)
             }
             else if (i == (baridx - trailsize))
             {
-                leds[i] = CRGB_ORANGE(BAR_BRIGHTNESS - headbrighti, 4);
+                leds[i] = CRGB_ORANGE(hud_settings.ledbrite_bar - headbrighti, 4);
             }
             else
             #endif
             {
-                leds[i] = CRGB_ORANGE(BAR_BRIGHTNESS, 4);
+                leds[i] = CRGB_ORANGE(hud_settings.ledbrite_bar, 4);
             }
         }
         else
@@ -133,23 +133,23 @@ void strip_speedometer(double speed)
             if (i <= baridx)
             {
                 if (i == 0) {
-                    leds[i] = CRGB_BLUE(TICK_BRIGHTNESS);
+                    leds[i] = CRGB_BLUE(hud_settings.ledbrite_tick);
                 }
                 else if ((i / tickspace) <= 4) {
-                    leds[i] = CRGB_RED(TICK_BRIGHTNESS);
+                    leds[i] = CRGB_RED(hud_settings.ledbrite_tick);
                 }
                 else {
-                    leds[i] = CRGB_PURPLE(TICK_BRIGHTNESS);
+                    leds[i] = CRGB_PURPLE(hud_settings.ledbrite_tick);
                 }
             }
             else {
-                leds[i] = CRGB_BLUE(TICK_BRIGHTNESS);
+                leds[i] = CRGB_BLUE(hud_settings.ledbrite_tick);
             }
         }
     }
 
     if (leds[0].r == 0 && leds[0].g == 0 && leds[0].b == 0) {
-        leds[0] = CRGB_BLUE(TICK_BRIGHTNESS);
+        leds[0] = CRGB_BLUE(hud_settings.ledbrite_tick);
     }
 }
 
@@ -321,8 +321,8 @@ void stripe_animate_step()
                 hud_aniDelay = MS_TO_RTOS_TICKS(20);
                 need_show = true;
                 int b = hud_aniStep * 4;
-                b = b >= TICK_BRIGHTNESS ? TICK_BRIGHTNESS : b;
-                int meltlimit = TICK_BRIGHTNESS / 2;
+                b = b >= hud_settings.ledbrite_tick ? hud_settings.ledbrite_tick : b;
+                int meltlimit = hud_settings.ledbrite_tick / 2;
                 int b2 = (hud_animation == HUDANI_FADEIN_ALL) ? 0 : ((b <= (meltlimit)) ? b :(meltlimit - (b - meltlimit) - 1));
                 b2 = b2 < 0 ? 0 : b2;
                 int i;
@@ -330,7 +330,7 @@ void stripe_animate_step()
                 {
                     leds[i] = CRGB_BLUE(((i % SPEED_TICK_SPACING) == 0) ? b : b2);
                 }
-                if (b >= TICK_BRIGHTNESS)
+                if (b >= hud_settings.ledbrite_tick)
                 {
                     hud_animation = HUDANI_SPEEDOMETER;
                 }
@@ -344,7 +344,7 @@ void stripe_animate_step()
             {
                 hud_aniDelay = MS_TO_RTOS_TICKS(20);
                 need_show = true;
-                int b = TICK_BRIGHTNESS - (hud_aniStep * 4);
+                int b = hud_settings.ledbrite_tick - (hud_aniStep * 4);
                 b = b < 0 ? 0 : b;
                 int i;
                 for (i = 0; i < LED_STRIP_SIZE; i++)
@@ -370,7 +370,7 @@ void stripe_animate_step()
                 int i, j;
                 for (i = 0, j = 0; i < LED_STRIP_SIZE && j < fully_lit; i += SPEED_TICK_SPACING, j++)
                 {
-                    leds[i] = CRGB_BLUE(TICK_BRIGHTNESS);
+                    leds[i] = CRGB_BLUE(hud_settings.ledbrite_tick);
                 }
                 if (i < LED_STRIP_SIZE)
                 {
@@ -414,11 +414,11 @@ void stripe_animate_step()
                 hud_aniDelay = MS_TO_RTOS_TICKS(2000 / LED_STRIP_SIZE);
                 need_show = true;
                 int i;
-                volatile int brite = TICK_BRIGHTNESS;
+                volatile int brite = hud_settings.ledbrite_tick;
                 if (hud_animation == HUDANI_FADEIN_SCROLLFADE) {
                     brite *= hud_aniStep;
                     brite /= LED_STRIP_SIZE;
-                    brite = brite > TICK_BRIGHTNESS ? TICK_BRIGHTNESS : brite;
+                    brite = brite > hud_settings.ledbrite_tick ? hud_settings.ledbrite_tick : brite;
                 }
                 strip_blank();
                 for (i = hud_aniStep; i >= 0; i -= SPEED_TICK_SPACING)
@@ -502,8 +502,8 @@ void stripe_animate_step()
                     {
                         int16_t old_b = leds[i].b;
                         int16_t new_b = old_b + bi;
-                        new_b = new_b > TICK_BRIGHTNESS ? TICK_BRIGHTNESS : new_b;
-                        new_b = new_b < (TICK_BRIGHTNESS / 8) ? (TICK_BRIGHTNESS / 8) : new_b;
+                        new_b = new_b > hud_settings.ledbrite_tick ? hud_settings.ledbrite_tick : new_b;
+                        new_b = new_b < (hud_settings.ledbrite_tick / 8) ? (hud_settings.ledbrite_tick / 8) : new_b;
                         leds[i] = CRGB_BLUE(new_b);
                         did = true;
                         break;
@@ -547,13 +547,13 @@ void stripe_animate_step()
                             did = true;
                             if ((r % SPEED_TICK_SPACING) == 0)
                             {
-                                leds[r] = CRGB_BLUE(TICK_BRIGHTNESS);
+                                leds[r] = CRGB_BLUE(hud_settings.ledbrite_tick);
                                 hud_aniDelay = MS_TO_RTOS_TICKS(150 + (rand() % 100));
                             }
                             else
                             {
                                 rnd_pick = r;
-                                int b = TICK_BRIGHTNESS * 3 / 4;
+                                int b = hud_settings.ledbrite_tick * 3 / 4;
                                 leds[r] = CRGB_BLUE(b);
                                 hud_aniDelay = MS_TO_RTOS_TICKS(need_fast ? 25 : 50);
                             }
@@ -597,14 +597,14 @@ void stripe_animate_step()
         case HUDANI_VOLTMETER_FADEIN:
             {
                 int b = hud_aniStep * 2;
-                b = b > VOLT_BRIGHTNESS ? VOLT_BRIGHTNESS : b;
+                b = b > hud_settings.ledbrite_volt ? hud_settings.ledbrite_volt : b;
                 float v = car_data.aux_batt_volt_x10;
-                v = mapf(b, 0, VOLT_BRIGHTNESS, 11.5, v / 10.0);
+                v = mapf(b, 0, hud_settings.ledbrite_volt, 11.5, v / 10.0);
                 strip_voltmeter(v, b);
                 need_show = true;
                 hud_aniStep++;
                 hud_aniDelay = MS_TO_RTOS_TICKS(25);
-                if (b >= VOLT_BRIGHTNESS) {
+                if (b >= hud_settings.ledbrite_volt) {
                     hud_animation = HUDANI_VOLTMETER;
                     hud_aniStep = 0;
                 }
@@ -613,7 +613,7 @@ void stripe_animate_step()
         case HUDANI_VOLTMETER:
             {
                 float v = car_data.aux_batt_volt_x10;
-                strip_voltmeter(v / 10, VOLT_BRIGHTNESS);
+                strip_voltmeter(v / 10, hud_settings.ledbrite_volt);
                 need_show = true;
                 hud_aniDelay = MS_TO_RTOS_TICKS(200);
                 hud_aniStep++;
@@ -626,7 +626,7 @@ void stripe_animate_step()
         case HUDANI_VOLTMETER_FADEOUT:
             {
                 float v = car_data.aux_batt_volt_x10;
-                int b = VOLT_BRIGHTNESS - (hud_aniStep * 4);
+                int b = hud_settings.ledbrite_volt - (hud_aniStep * 4);
                 b = b < 0 ? 0 : b;
                 strip_voltmeter(v / 10, b);
                 need_show = true;
