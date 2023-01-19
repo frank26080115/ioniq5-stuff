@@ -1,4 +1,5 @@
-<html>
+<!doctype html>
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="initial-scale=1" />
@@ -8,9 +9,290 @@
 <script type="application/javascript" src="jquery-3.6.3.min.js"></script>
 <script type="application/javascript" src="jquery-ui.min.js"></script>
 <script type="application/javascript" src="toast.js"></script>
+<script type="application/javascript" src="script.js"></script>
+<link rel="stylesheet" href="jquery-ui.css" />
+<link rel="stylesheet" href="jquery-ui.structure.min.css" />
 <link rel="stylesheet" href="jquery-ui.theme.css" />
+<link rel="stylesheet" href="style.css" />
+
+<style type="text/css">
+body
+{
+    background-color: #000;
+    color: #EEE;
+    font-size: 10pt;
+}
+.hideable-msg {
+    padding-left: 1em;
+    margin-bottom: 10px;
+}
+a:link {
+    color: green;
+}
+a:visited {
+    color: green;
+}
+a:hover {
+    color: red;
+}
+a:active {
+    color: yellow;
+}
+.slider-custom-handle {
+    text-align: center;
+    vertical-align: middle;
+    font-size: 8pt;
+    font-weight: normal;
+    padding-top: 3pt;
+    padding-bottom: 3pt;
+    padding-left: 7pt;
+    padding-right: 7pt;
+}
+fieldset {
+    margin-top: 1em;
+    margin-bottom: 0.2em;
+}
+.data_table {
+    width: 100%;
+}
+td {
+    padding-top: 3pt;
+    padding-bottom: 3pt;
+    padding-left: 7pt;
+    padding-right: 7pt;
+    vertical-align: middle;
+    border: 1px solid;
+    font-size: 8pt;
+}
+.dt_col_left {
+    text-align: right;
+    width: 1%;
+    max-width: 100%;
+    white-space: nowrap;
+    padding-right: 20pt;
+}
+.dt_col_right {
+    text-align: left;
+    padding-left: 20pt;
+}
+.battcelltbl_col_head {
+    text-align: left;
+    padding-left: 20pt;
+    white-space: nowrap;
+}
+.battcell_col_1 {
+    text-align: right;
+    width: 1%;
+    max-width: 100%;
+    white-space: nowrap;
+    white-space: nowrap;
+    padding-right: 20pt;
+}
+.battcell_col_2 {
+    text-align: center;
+    width: 1%;
+    max-width: 100%;
+    white-space: nowrap;
+    padding-right: 20pt;
+    padding-left: 20pt;
+}
+.battcell_col_3 {
+    text-align: center;
+    width: 1%;
+    max-width: 100%;
+    white-space: nowrap;
+    padding-right: 20pt;
+    padding-left: 20pt;
+}
+.battcell_col_4 {
+    text-align: center;
+    white-space: nowrap;
+}
+</style>
+
+<script type="application/javascript">
+
+var batt_cell_cnt = 6 * 32;
+var batt_bank_cnt = 5 + 10;
+var csv_columns = [
+    /* this must match the CSV line sent by the ESP32 */
+    "date time",
+    "sys millis",
+    "RPM",
+    "MPH",
+    "KMH",
+    "throttle",
+    "batt current",
+    "batt voltage",
+    "batt power",
+    "inverter capacitor voltage",
+    "BMS SoC",
+    "user SoC",
+    "BMS SoH",
+    "aux batt voltage",
+    "cumulative charge current",
+    "cumulative discharge current",
+    "cumulative charge power",
+    "cumulative discharge power",
+    "batt fan feedback",
+    "batt fan status",
+    "temperature indoor",
+    "temperature outdoor",
+    "temperature batt heater",
+    // cell voltages
+    // batt bank temperatures
+];
+
+function body_onLoad()
+{
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("showme").style.display = "block";
+
+    $("#btn_logstart").button().on("click", function(evt) {
+        
+    });
+
+    $("#btn_logstop").button().on("click", function(evt) {
+        
+    });
+
+    $("#btn_listfiles").button().on("click", function(evt) {
+        
+    });
+
+    $( "#slider_brightnesstick" ).slider({
+        create: function() {
+            var handle = $( "#slider_brightnesstick_handle" );
+            handle.text( $( this ).slider( "value" ) );
+        },
+        slide: function( event, ui ) {
+            var handle = $( "#slider_brightnesstick_handle" );
+            handle.text( ui.value );
+        }
+    });
+
+    $( "#num_speedcalib" ).spinner();
+
+    make_data_table();
+    make_battcell_table();
+
+    $("#accordion").accordion({
+        heightStyle: "content"
+    });
+}
+
+function make_data_table()
+{
+    var tbl_txt = "<table class=\"data_table\" id=\"data_table\">\r\n";
+    var i;
+    for (i = 0; i < csv_columns.length; i++)
+    {
+        var j = csv_columns[i];
+        tbl_txt += "<tr><td class=\"dt_col_left\">" + j + "</td><td class=\"dt_col_right\" id=\"dt_itm_" + i + "\">?</td></tr>\r\n";
+    }
+    tbl_txt += "</table>\r\n";
+    document.getElementById("div_datatable").innerHTML = tbl_txt;
+}
+
+function make_battcell_table()
+{
+    var tbl_txt = "<table class=\"data_table\" id=\"batt_cell_table\">\r\n";
+    tbl_txt += "<tr><td class=\"battcelltbl_col_head\">Cell Num</td><td class=\"battcelltbl_col_head\">V</td><td class=\"battcelltbl_col_head\" colspan=\"2\">T</td></tr>\r\n";
+    var i, j;
+    for (i = 0; i < batt_cell_cnt; i++)
+    {
+        j = i + 1;
+        tbl_txt += "<tr><td class=\"battcell_col_1\">" + j + "</td><td class=\"battcell_col_2\" id=\"battcell_" + i + "_v\">?</td><td class=\"battcell_col_3\" id=\"battcell_" + i + "_t\">?</td><td class=\"battcell_col_4\">&nbsp;</td></tr>\r\n";
+    }
+    tbl_txt += "</table>\r\n";
+    document.getElementById("div_cellbalance").innerHTML = tbl_txt;
+}
+
+</script>
 
 </head>
 <body onload="body_onLoad();">
+
+<div id="loading"><h2>Loading... Please Wait...</h2></div>
+
+<div id="showme" style="display:none;">
+
+<h2>IONIQ 5 HUD Web Intf</h2>
+
+<div id="accordion">
+
+    <h3>Statistics Logging</h3>
+    <div>
+        <button id="btn_logstart">Start</button>
+        <button id="btn_logstop">Stop</button>
+        <div><fieldset><legend>File Name</legend><div>
+            <div id="div_filename">waiting for data...</div>
+        </div></fieldset></div>
+        <div><fieldset><legend>Data Table</legend><div>
+            <div id="div_datatable">waiting for data...</div>
+        </div></fieldset></div>
+    </div>
+
+    <h3>Graph: Driving</h3>
+    <div>
+        <div id="div_graph_driving">waiting for data...</div>
+    </div>
+
+    <h3>Graph: Battery</h3>
+    <div>
+        <div id="div_graph_battery">waiting for data...</div>
+    </div>
+
+    <h3>Cell Balance</h3>
+    <div>
+        <div id="div_cellbalance">waiting for data...</div>
+    </div>
+
+    <h3>Files</h3>
+    <div>
+        <button id="btn_listfiles">List Files</button>
+        <div><fieldset><legend>File List</legend><div>
+            <div id="div_filename">waiting for data...</div>
+        </div></fieldset></div>
+    </div>
+
+    <h3>Speed Calibration</h3>
+    <div>
+        <label for="num_speedcalib">Multiplier value:</label>
+        <input id="num_speedcalib" name="num_speedcalib" />
+    </div>
+
+    <h3>LED Brightness Config</h3>
+    <div>
+        <div><fieldset><legend>Tick Brightness</legend><div>
+            <div id="slider_brightnesstick"><div id="slider_brightnesstick_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+        </div></fieldset></div><br />
+        <div><fieldset><legend>Bar Brightness</legend><div>
+            <div id="slider_brightnessbar"><div id="slider_brightnessbar_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+        </div></fieldset></div><br />
+        <div><fieldset><legend>Voltmeter Brightness</legend><div>
+            <div id="slider_brightnessvolt"><div id="slider_brightnessvolt_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+        </div></fieldset></div>
+    </div>
+
+    <h3>Ambient Light Calibration</h3>
+    <div>
+        <div><fieldset><legend>Current Level</legend><div>
+            <div id="div_amblightlevel">waiting for data...</div>
+        </div></fieldset></div>
+        <div><fieldset><legend>Low Point</legend><div>
+            <div id="slider_amblightlow"><div id="slider_amblightlow_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+        </div></fieldset></div>
+        <div><fieldset><legend>High Point</legend><div>
+            <div id="slider_amblighthigh"><div id="slider_amblighthigh_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+        </div></fieldset></div>
+        <div><fieldset><legend>Curve</legend><div>
+            <div id="slider_amblightcurve"><div id="slider_amblightcurve_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+        </div></fieldset></div>
+    </div>
+</div>
+
+</div>
+
 </body>
 </html>

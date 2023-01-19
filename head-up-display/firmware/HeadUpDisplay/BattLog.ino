@@ -138,3 +138,32 @@ void battlog_log()
     obd_printLog(p2);
     p2->printf("\r\n");
 }
+
+void battlog_task(uint32_t now)
+{
+    if (battlog_fileReady == false) {
+        return;
+    }
+
+    static uint32_t last_time = 0;
+
+    uint32_t tick_interval = 1000;
+
+    if (car_data.ignition != false) {
+        tick_interval = 200;
+    }
+    else if (car_data.charge_mode != 0) {
+        tick_interval = 500;
+    }
+
+    if ((now - last_time) >= tick_interval)
+    {
+        if ((now - last_time) >= tick_interval * 2) {
+            last_time = now;
+        }
+        else {
+            last_time += tick_interval;
+        }
+        battlog_log();
+    }
+}

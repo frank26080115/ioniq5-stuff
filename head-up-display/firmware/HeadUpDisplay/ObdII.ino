@@ -321,6 +321,7 @@ void obd_parseVehicleDataThrottle()
 {
     if (obd_database[(OBD_PID_THROTTLE & 0x0F) | 0x10] != NULL)
     {
+        // WARNING: car never replied to this request, the parsing has not been tested
         uint8_t* ptr = (uint8_t*)(&((obd_database[(OBD_PID_THROTTLE & 0x0F) | 0x10])[2]));
         car_data.throttle = ptr[1];
     }
@@ -363,6 +364,7 @@ void obd_parseVehicleDataSpeedCalibration()
     }
     else if (obd_database[(OBD_PID_SIMPLESPEED & 0x0F) | 0x10] != NULL)
     {
+        // WARNING: car never replied to this request, the parsing has not been tested
         ptr = (uint8_t*)(&((obd_database[(OBD_PID_SIMPLESPEED & 0x0F) | 0x10])[2]));
         car_data.speed_kmh = ptr[1];
     }
@@ -415,7 +417,7 @@ void obd_printLog(Print* p)
     tmp /= 1000.0;
     p->printf("%0.1f, ", tmp);
 
-    p->printf("%u, %0.1f, %u, ", car_data.rpm, car_data.speed_mph, car_data.throttle);
+    p->printf("%u, %0.1f, %d, %u, ", car_data.rpm, car_data.speed_mph, car_data.speed_kmh, car_data.throttle);
 
     p->printf("%u, 0x%02X, ", car_data.ignition, car_data.charge_mode);
 

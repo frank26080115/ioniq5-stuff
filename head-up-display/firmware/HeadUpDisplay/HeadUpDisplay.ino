@@ -28,6 +28,7 @@ uint32_t hud_offTime;
 MultiDestPrinter log_printer;
 
 DebuggingSerial dbg_ser(&Serial);
+extern SerialCmdLine cmdline;
 
 void setup()
 {
@@ -35,6 +36,11 @@ void setup()
     settings_load();
 
     bringup_tests();
+
+    amblight_init();
+    heartbeat_init();
+    canbus_init();
+    battlog_init();
 
     xTaskCreatePinnedToCore(
                 loop2,       /* Task function. */
@@ -50,23 +56,44 @@ void setup()
 void loop()
 {
     uint32_t now = millis();
+
+    canbus_poll();
+    obd_queryTask(now);
+
+    cmdline.task();
+    amblight_task();
+    web_task(now);
 }
 
 void loop2(void* pvParameters)
 {
     while (true)
     {
-        
+        uint32_t now = millis();
+
+        state_machine(now);
+
+        hud_aniDelay = 0;
+        strip_task(now);
 
         esp_task_wdt_reset();
-        vTaskDelay(5 + hud_aniDelay);
+
+        if (hud_aniDelay > 0)
+        {
+            // since SD card writing is done in large chunks, do it only right after each frame of animation
+            heartbeat_task(now = millis());
+            battlog_task(now);
+            // subtract the time needed for the battery logging SD card write, to keep frame rate consistent
+            hud_aniDelay -= millis() - now;
+            hud_aniDelay = hud_aniDelay < 0 ? 0 : hud_aniDelay;
+        }
+
+        vTaskDelay(5 + hud_aniDelay); // keep animation frame rate, and do other tasks
     }
 }
 
-void state_machine()
+void state_machine(uint32_t now)
 {
-    uint32_t now = millis();
-
     if (hud_state == HUDSTATE_INIT)
     {
         if (car_data.rpm > 0)
@@ -85,7 +112,7 @@ void state_machine()
         else if (now >= 30 * 60 * 1000)
         {
             hud_state = HUDSTATE_OFF;
-            hud_offTime = millis();
+            hud_offTime = now;
         }
         else if (now >= 2000 && car_data.ignition == false)
         {
@@ -107,7 +134,7 @@ void state_machine()
         else if (now >= 30 * 60 * 1000 && car_data.ignition == false)
         {
             hud_state = HUDSTATE_OFF;
-            hud_offTime = millis();
+            hud_offTime = now;
         }
     }
     else if (hud_state == HUDSTATE_IGNITION)
@@ -122,7 +149,7 @@ void state_machine()
         else if (car_data.ignition == false)
         {
             hud_state = HUDSTATE_OFF;
-            hud_offTime = millis();
+            hud_offTime = now;
             hud_animation = HUDANI_VOLTMETER_FADEIN;
             hud_animation_queue = HUDANI_OFF;
             hud_aniStep = 0;
@@ -133,7 +160,7 @@ void state_machine()
         if (car_data.ignition == false)
         {
             hud_state = HUDSTATE_OFF;
-            hud_offTime = millis();
+            hud_offTime = now;
             hud_animation = HUDANI_FADEOUT;
             hud_animation_queue = HUDANI_VOLTMETER_FADEIN;
             hud_aniStep = 0;

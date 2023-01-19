@@ -86,6 +86,9 @@ void web_init()
         request->send(SPIFFS, "/jquery-ui.theme.css", "text/css");
     });
 
+    server.on("/ui-icons.png", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/ui-icons.png", "image/png");
+    });
 
     if (battlog_cardReady) {
         server.serveStatic("/", SD, "/");
