@@ -61,3 +61,17 @@ bool strip_isAllTicks()
     }
     return true;
 }
+
+void strip_aniFadeInReport()
+{
+    if (hud_aniStep == 0) {
+        dbg_ser.printf("[%u]: ANI fade-in %d start\r\n", millis(), hud_animation);
+    }
+}
+
+void strip_aniFadeOutReport()
+{
+    if (hud_aniStep == 0) {
+        dbg_ser.printf("[%u]: ANI fade-out %d start\r\n", millis(), hud_animation);
+    }
+}

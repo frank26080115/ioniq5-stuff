@@ -13,7 +13,7 @@ typedef struct
     int16_t  rpm_max;
     int16_t  speed_kmh;
     int16_t  speed_kmh_max;
-    float    speed_mph;
+    float    speed_mph;     // contains MPH results after conversion and prediction
     uint8_t  throttle;
 
     uint16_t aux_batt_volt_x10;
@@ -40,6 +40,11 @@ typedef struct
     uint32_t cumulative_charge_power;
     uint32_t cumulative_discharge_power;
 
+    uint8_t  cellvolt_min_x50;
+    uint8_t  cellvolt_max_x50;
+    uint16_t cellhealth_min_x10;
+    bool     cellvolt_recommend_balancing;
+
     uint16_t inverter_capacitor_voltage;
     uint16_t isolation_resistance;
 }
@@ -50,22 +55,25 @@ typedef struct
     uint32_t magic;
     uint32_t len;
 
-    uint32_t speed_multiplier;
-    uint16_t speed_kmh_max;
-    uint16_t speed_calib_rpm;
-    uint16_t speed_calib_kmh;
+    uint32_t speed_multiplier; // actual variable used to calculate MPH from RPM, denominator is fixed
+    uint16_t speed_kmh_max;    // data used for calibration
+    uint16_t speed_calib_rpm;  // data used for calibration
+    uint16_t speed_calib_kmh;  // data used for calibration
 
-    uint32_t amblight_low;
-    uint32_t amblight_min;
-    uint32_t amblight_expo;
-    uint32_t amblight_high;
+    uint32_t amblight_low;  // sensor reading while darkest
+    uint32_t amblight_high; // sensor reading while brightest
+    uint32_t amblight_min;  // minimum global LED brightness (during darkness)
+    uint32_t amblight_expo; // curve of sensor response
 
-    float spdpredict_slew;
-    float spdpredict_factor;
+    float spdpredict_slew;   // limit on speed change due to prediction
+    float spdpredict_factor; // how dominant the prediction is in the result
 
+    // LED brightness for animation elements
     uint8_t ledbrite_tick;
     uint8_t ledbrite_bar;
     uint8_t ledbrite_volt;
+
+    float cell_imbalance; // cell imbalance voltage threshold
 
     uint32_t crc32;
 }

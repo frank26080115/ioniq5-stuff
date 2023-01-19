@@ -246,16 +246,20 @@ void stripe_animate_step()
     switch (hud_animation)
     {
         case HUDANI_OFF:
-            hud_aniDelay = MS_TO_RTOS_TICKS(100);
+            hud_aniDelay = 100;
             break;
         case HUDANI_SPEEDOMETER:
             strip_speedometer(car_data.speed_mph);
             strip_indicateRegen();
-            hud_aniDelay = MS_TO_RTOS_TICKS(10);
+            hud_aniDelay = 10;
             need_show = true;
             break;
         case HUDANI_INTRO:
             {
+                if (hud_aniStep == 0) {
+                    dbg_ser.printf("[%u]: ANI intro start\r\n", millis());
+                }
+
                 bool did = false;
                 int i, j, s, stage, step, size;
                 int mididx1, mididx2;
@@ -287,12 +291,12 @@ void stripe_animate_step()
                     hud_animation = hud_animation_queue;
                     hud_animation_queue = HUDANI_OFF;
                     hud_aniStep = 0;
-                    hud_aniDelay = MS_TO_RTOS_TICKS(1);
+                    hud_aniDelay = 1;
                 }
                 else
                 {
                     hud_aniStep += 1;
-                    hud_aniDelay = MS_TO_RTOS_TICKS(50);
+                    hud_aniDelay = 50;
                     need_show = true;
                 }
             }
@@ -300,25 +304,28 @@ void stripe_animate_step()
         case HUDANI_FADEIN:
         case HUDANI_FADEOUT:
             {
+                dbg_ser.printf("[%u]: ANI fade %u\r\n", millis(), hud_animation);
                 int num_of_ani = ((hud_animation == HUDANI_FADEIN) ? (HUDANI_FADEIN_LAST - HUDANI_FADEIN) : (HUDANI_FADEOUT_END - HUDANI_FADEOUT)) - 1;
                 srand_check();
                 hud_animation += 1 + (rand() % num_of_ani);
                 hud_aniStep = 0;
             }
-            hud_aniDelay = MS_TO_RTOS_TICKS(1);
+            hud_aniDelay = 0;
             break;
         case HUDANI_FADEOUT_END:
             strip_blank();
             hud_animation = hud_animation_queue;
             hud_animation_queue = HUDANI_OFF;
             hud_aniStep = 0;
-            hud_aniDelay = MS_TO_RTOS_TICKS(100);
+            hud_aniDelay = 100;
             need_show = true;
+            dbg_ser.printf("[%u]: ANI fade out end -> %u\r\n", millis(), hud_animation);
             break;
         case HUDANI_FADEIN_ALL:
         case HUDANI_FADEIN_MELT:
             {
-                hud_aniDelay = MS_TO_RTOS_TICKS(20);
+                strip_aniFadeInReport();
+                hud_aniDelay = 20;
                 need_show = true;
                 int b = hud_aniStep * 4;
                 b = b >= hud_settings.ledbrite_tick ? hud_settings.ledbrite_tick : b;
@@ -332,6 +339,7 @@ void stripe_animate_step()
                 }
                 if (b >= hud_settings.ledbrite_tick)
                 {
+                    dbg_ser.printf("[%u]: ANI fade-in %d end -> speedometer\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_SPEEDOMETER;
                 }
                 else
@@ -342,7 +350,8 @@ void stripe_animate_step()
             break;
         case HUDANI_FADEOUT_ALL:
             {
-                hud_aniDelay = MS_TO_RTOS_TICKS(20);
+                strip_aniFadeOutReport();
+                hud_aniDelay = 20;
                 need_show = true;
                 int b = hud_settings.ledbrite_tick - (hud_aniStep * 4);
                 b = b < 0 ? 0 : b;
@@ -353,6 +362,7 @@ void stripe_animate_step()
                 }
                 if (b <= 0)
                 {
+                    dbg_ser.printf("[%u]: ANI fade-out %d end\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_FADEOUT_END;
                 }
                 else
@@ -363,7 +373,8 @@ void stripe_animate_step()
             break;
         case HUDANI_FADEIN_FADESCROLL:
             {
-                hud_aniDelay = MS_TO_RTOS_TICKS(50);
+                strip_aniFadeInReport();
+                hud_aniDelay = 50;
                 need_show = true;
                 int fully_lit = hud_aniStep / 256;
                 int last_brightness = hud_aniStep % 256;
@@ -379,13 +390,15 @@ void stripe_animate_step()
                 }
                 else
                 {
+                    dbg_ser.printf("[%u]: ANI fade-in %d done -> speedometer\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_SPEEDOMETER;
                 }
             }
             break;
         case HUDANI_FADEOUT_SEQ:
             {
-                hud_aniDelay = MS_TO_RTOS_TICKS(50);
+                strip_aniFadeOutReport();
+                hud_aniDelay = 50;
                 need_show = true;
                 int fully_dim = hud_aniStep / 256;
                 int last_brightness = 255 - (hud_aniStep % 256);
@@ -404,6 +417,7 @@ void stripe_animate_step()
                 }
                 else
                 {
+                    dbg_ser.printf("[%u]: ANI fade-out %d done\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_FADEOUT_END;
                 }
             }
@@ -411,7 +425,8 @@ void stripe_animate_step()
         case HUDANI_FADEIN_SCROLL:
         case HUDANI_FADEIN_SCROLLFADE:
             {
-                hud_aniDelay = MS_TO_RTOS_TICKS(2000 / LED_STRIP_SIZE);
+                strip_aniFadeInReport();
+                hud_aniDelay = 2000 / LED_STRIP_SIZE;
                 need_show = true;
                 int i;
                 volatile int brite = hud_settings.ledbrite_tick;
@@ -427,6 +442,7 @@ void stripe_animate_step()
                 }
                 hud_aniStep += 1;
                 if (hud_aniStep >= LED_STRIP_SIZE) {
+                    dbg_ser.printf("[%u]: ANI fade-in %d done -> speedometer\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_SPEEDOMETER;
                 }
             }
@@ -439,11 +455,13 @@ void stripe_animate_step()
                 bool did = false;
                 if (hud_aniStep == 0)
                 {
+                    dbg_ser.printf("[%u]: ANI fade %d start\r\n", millis(), hud_animation);
+
                     if (hud_animation == HUDANI_FADEIN_RANDOM) {
                         strip_blank();
                     }
                     else {
-                        strip_speedometer(0);
+                        strip_speedometer(0); // forces all ticks to be displayed immediately
                     }
                     rnd_pick = rand() % 9;
                     rnd_cnt = 1;
@@ -475,21 +493,25 @@ void stripe_animate_step()
                         else
                         {
                             hud_animation = (hud_animation == HUDANI_FADEIN_RANDOM) ? HUDANI_SPEEDOMETER : HUDANI_FADEOUT_END;
+                            dbg_ser.printf("[%u]: ANI fade random end -> %d\r\n", millis(), hud_animation);
                         }
                     }
                 }
                 hud_aniStep += 1;
                 if (did)
                 {
-                    hud_aniDelay = MS_TO_RTOS_TICKS(50);
+                    hud_aniDelay = 50;
                     need_show = true;
                 }
             }
             break;
         case HUDANI_FADEIN_FUZZ:
             {
+                strip_aniFadeInReport();
                 if (strip_hasAllTicks()) {
+                    dbg_ser.printf("[%u]: ANI fade-in %d done -> speedometer\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_SPEEDOMETER;
+                    hud_aniStep = 0;
                     break;
                 }
                 bool did = false;
@@ -512,15 +534,18 @@ void stripe_animate_step()
                 hud_aniStep += 1;
                 if (did)
                 {
-                    hud_aniDelay = MS_TO_RTOS_TICKS(50);
+                    hud_aniDelay = 50;
                     need_show = true;
                 }
             }
             break;
         case HUDANI_FADEIN_STATIC:
             {
+                strip_aniFadeInReport();
                 if (strip_isAllTicks()) {
+                    dbg_ser.printf("[%u]: ANI fade-in %d done -> speedometer\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_SPEEDOMETER;
+                    hud_aniStep = 0;
                     break;
                 }
                 static uint32_t start_time;
@@ -548,14 +573,14 @@ void stripe_animate_step()
                             if ((r % SPEED_TICK_SPACING) == 0)
                             {
                                 leds[r] = CRGB_BLUE(hud_settings.ledbrite_tick);
-                                hud_aniDelay = MS_TO_RTOS_TICKS(150 + (rand() % 100));
+                                hud_aniDelay = 150 + (rand() % 100);
                             }
                             else
                             {
                                 rnd_pick = r;
                                 int b = hud_settings.ledbrite_tick * 3 / 4;
                                 leds[r] = CRGB_BLUE(b);
-                                hud_aniDelay = MS_TO_RTOS_TICKS(need_fast ? 25 : 50);
+                                hud_aniDelay = need_fast ? 25 : 50;
                             }
                             break;
                         }
@@ -572,7 +597,7 @@ void stripe_animate_step()
                         rnd_pick = -1;
                     }
                     did = true;
-                    hud_aniDelay = MS_TO_RTOS_TICKS(need_fast ? 25 : 50);
+                    hud_aniDelay = need_fast ? 25 : 50;
                 }
 
                 if (need_fast != false)
@@ -586,7 +611,7 @@ void stripe_animate_step()
                         new_b = new_b > 255 ? 255 : new_b;
                         leds[i] = CRGB_BLUE(new_b);
                     }
-                    hud_aniDelay = MS_TO_RTOS_TICKS(25);
+                    hud_aniDelay = 25;
                 }
                 if (did)
                 {
@@ -596,6 +621,7 @@ void stripe_animate_step()
             break;
         case HUDANI_VOLTMETER_FADEIN:
             {
+                strip_aniFadeInReport();
                 int b = hud_aniStep * 2;
                 b = b > hud_settings.ledbrite_volt ? hud_settings.ledbrite_volt : b;
                 float v = car_data.aux_batt_volt_x10;
@@ -603,10 +629,11 @@ void stripe_animate_step()
                 strip_voltmeter(v, b);
                 need_show = true;
                 hud_aniStep++;
-                hud_aniDelay = MS_TO_RTOS_TICKS(25);
+                hud_aniDelay = 25;
                 if (b >= hud_settings.ledbrite_volt) {
                     hud_animation = HUDANI_VOLTMETER;
                     hud_aniStep = 0;
+                    dbg_ser.printf("[%u]: ANI voltmeter fade-in done\r\n", millis());
                 }
             }
             break;
@@ -615,25 +642,28 @@ void stripe_animate_step()
                 float v = car_data.aux_batt_volt_x10;
                 strip_voltmeter(v / 10, hud_settings.ledbrite_volt);
                 need_show = true;
-                hud_aniDelay = MS_TO_RTOS_TICKS(200);
+                hud_aniDelay = 200;
                 hud_aniStep++;
                 if (hud_aniStep >= 5 * 5) {
                     hud_animation = HUDANI_VOLTMETER_FADEOUT;
                     hud_aniStep = 0;
+                    dbg_ser.printf("[%u]: ANI voltmeter done\r\n", millis());
                 }
             }
             break;
         case HUDANI_VOLTMETER_FADEOUT:
             {
+                strip_aniFadeOutReport();
                 float v = car_data.aux_batt_volt_x10;
                 int b = hud_settings.ledbrite_volt - (hud_aniStep * 4);
                 b = b < 0 ? 0 : b;
                 strip_voltmeter(v / 10, b);
                 need_show = true;
-                hud_aniDelay = MS_TO_RTOS_TICKS(25);
+                hud_aniDelay = 25;
                 if (b <= 0)
                 {
                     hud_animation = hud_animation_queue;
+                    dbg_ser.printf("[%u]: ANI voltmeter fade-out -> %u\r\n", millis(), hud_animation);
                     hud_animation_queue = HUDANI_OFF;
                     hud_aniStep = 0;
                 }

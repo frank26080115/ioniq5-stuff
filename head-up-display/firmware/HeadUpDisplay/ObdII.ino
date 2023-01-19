@@ -125,13 +125,13 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
 {
     if (obd_debug_dump != false)
     {
-        Serial.printf("CAN RX[t=%u]: ", millis());
+        dbg_ser.printf("CAN RX[t=%u]: ", millis());
         int di;
         for (di = 0; di < datalen; di++)
         {
-            Serial.printf("0x%02X, ", data[di]);
+            dbg_ser.printf("0x%02X, ", data[di]);
         }
-        Serial.printf("\r\n");
+        dbg_ser.printf("\r\n");
         /*
         CAN RX[t=29143]: 0x22, 0x01, 0x01, 
         CAN RX[t=29231]: 0x62, 0x01, 0x01, 0xEF, 0xFB, 0xE7, 0xEF, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x1B, 0xB7, 0x10, 0x0E, 0x0E, 0x0F, 0x0E, 0x0F, 0x0E, 0x00, 0x35, 0xB8, 0x02, 0xB8, 0x0D, 0x00, 0x00, 0x87, 0x00, 0x00, 0x1E, 0xE2, 0x00, 0x00, 0x1E, 0xB1, 0x00, 0x00, 0x16, 0x80, 0x00, 0x00, 0x15, 0xAD, 0x00, 0x13, 0xE0, 0x40, 0x00, 0x02, 0xC4, 0x00, 0x00, 0x00, 0x00, 0x0B, 0xB8, 
@@ -173,7 +173,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
             ptr16 = (uint16_t*)(obd_database[pid8]);
             if (obd_debug_dump)
             {
-                Serial.printf("CAN bus parser created DB 0x%02X -> %u\r\n", pid8, datalen);
+                dbg_ser.printf("CAN bus parser created DB 0x%02X -> %u\r\n", pid8, datalen);
             }
         }
         else if ((*ptr16) < datalen)
@@ -182,7 +182,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
             obd_database[pid8] = (uint8_t*)malloc(datalen + 2);
             if (obd_debug_dump)
             {
-                Serial.printf("CAN bus parser resized DB 0x%02X -> %u\r\n", pid8, datalen);
+                dbg_ser.printf("CAN bus parser resized DB 0x%02X -> %u\r\n", pid8, datalen);
             }
         }
 
@@ -203,7 +203,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
                     if (hud_settings.speed_multiplier == 0 || speedcalib_active) {
                         obd_parseVehicleDataSpeedCalibration();
                     }
-                    spdpredict_convertSubmit();
+                    spdpredict_submit(car_data.rpm, millis());
                     break;
                 case (OBD_PID_THROTTLE & 0x0F) | 0x10:
                     obd_parseVehicleDataThrottle();
@@ -211,7 +211,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
                 case (OBD_PID_MAINPACKET & 0x0F):
                     obd_hasNewSpeed = true;
                     obd_parseVehicleDataBasic();
-                    spdpredict_convertSubmit();
+                    spdpredict_submit(car_data.rpm, millis());
                     break;
                 case (OBD_PID_REALSPEED & 0x0F):
                     obd_hasNewLog = true;
@@ -350,6 +350,19 @@ void obd_parseVehicleDataBasic()
     car_data.batt_power_x100 = car_data.batt_current_x10 * car_data.batt_voltage_x10;
 
     car_data.ignition = ((ptr[50] & (1 << 2)) != 0) || car_data.rpm != 0;
+
+    car_data.cellvolt_min_x50   = ptr['Z' - 'A'];
+    car_data.cellvolt_max_x50   = ptr['X' - 'A'];
+    car_data.cellhealth_min_x10 = pktparse_uint16_be(ptr, 28);
+    // unable to find data item for cellhealth_max
+
+    // determine if balancing is recommended, TODO: tune this
+    if (car_data.cellvolt_max_x50 < 4 * 50)
+    {
+        float vdiff = car_data.cellvolt_max_x50 - car_data.cellvolt_min_x50;
+        vdiff /= 50;
+        car_data.cellvolt_recommend_balancing |= vdiff > hud_settings.cell_imbalance;
+    }
 
     obd_parseVehicleDataThrottle();
 }

@@ -2,7 +2,7 @@
 
 bool speedcalib_active = false;
 
-float speedcalib_convert(int32_t rpm)
+float speedcalib_convert(float rpm)
 {
     rpm *= hud_settings.speed_multiplier;
     float frpm = rpm;
@@ -17,7 +17,7 @@ float speedcalib_validate(int32_t rpm, int32_t kmh)
     return mph1 - mph2;
 }
 
-void speedcalib_task()
+void speedcalib_task(uint32_t now)
 {
     static uint32_t kmh_buf[2];
     static uint32_t rpm_buf[2];
@@ -28,13 +28,15 @@ void speedcalib_task()
     static uint32_t saved_rpm;
     static uint32_t saved_kmh;
 
+    static uint32_t last_dbg_time = 0;
+
     if (speedcalib_active == false && hud_settings.speed_multiplier != 0) {
         return;
     }
 
     if (save_timer != 0 && m_lpf > 0)
     {
-        if ((millis() - save_timer) >= 3000)
+        if ((now - save_timer) >= 3000)
         {
             hud_settings.speed_multiplier = lpf_read(m_lpf, 100);
             hud_settings.speed_kmh_max = kmh_max;
@@ -42,7 +44,7 @@ void speedcalib_task()
             hud_settings.speed_calib_kmh = saved_kmh;
             save_timer = 0;
             settings_save();
-            Serial.printf("Speed Calib Save: %0.2f , %u , %u , %0.1f\r\n", hud_settings.speed_multiplier, saved_rpm, saved_kmh, speedcalib_validate(saved_rpm, saved_kmh));
+            Serial.printf("[%u]: Speed Calib Save: %0.2f , %u , %u , %0.1f\r\n", now, hud_settings.speed_multiplier, saved_rpm, saved_kmh, speedcalib_validate(saved_rpm, saved_kmh));
         }
     }
     else if (kmh_max == 0)
@@ -70,12 +72,14 @@ void speedcalib_task()
         saved_kmh = kmh_used;
         saved_rpm = rpm_used;
         if (kmh_used > kmh_max) {
+            // speed is faster than what we used before, so be should save this better value
             kmh_max = kmh_used;
-            save_timer = millis();
+            save_timer = now;
         }
         else if (kmh_used >= 96 && save_timer == 0)
         {
-            save_timer = millis();
+            // speed is very fast, and it has been a while, we can save another filtered value
+            save_timer = now;
         }
     }
 }

@@ -23,13 +23,13 @@ void canbus_init()
     if (can_driver_install(&g_config, &t_config, &f_config) == ESP_OK)
     {
         if (can_start() == ESP_OK) {
-            Serial.println("CAN bus driver installed and started");
+            dbg_ser.println("CAN bus driver installed and started");
         }
         else {
-            Serial.println("CAN bus driver installed but failed to start");
+            dbg_ser.println("CAN bus driver installed but failed to start");
         }
     } else {
-        Serial.println("CAN bus driver failed to install");
+        dbg_ser.println("CAN bus driver failed to install");
     }
 
     isotp_init_link(&isotp_link, CANBUS_TX_ID, canbus_bufferTx, ISOTP_BUFSIZE_TX, canbus_bufferRx, ISOTP_BUFSIZE_RX);

@@ -42,6 +42,8 @@ void setup()
     canbus_init();
     battlog_init();
 
+    Serial.println("HUD all init done, spinning up 2nd thread");
+
     xTaskCreatePinnedToCore(
                 loop2,       /* Task function. */
                 "loop2",     /* name of task. */
@@ -67,14 +69,19 @@ void loop()
 
 void loop2(void* pvParameters)
 {
+    #define LOOP2_MIN_DELAY 5
     while (true)
     {
         uint32_t now = millis();
 
         state_machine(now);
 
+        speedcalib_task(now);
+        car_data.speed_mph = speedcalib_convert(spdpredict_get(now = millis()));
+
         hud_aniDelay = 0;
         strip_task(now);
+        hud_aniDelay = (hud_aniDelay > 1) ? (hud_aniDelay - 1) : hud_aniDelay;
 
         esp_task_wdt_reset();
 
@@ -88,7 +95,7 @@ void loop2(void* pvParameters)
             hud_aniDelay = hud_aniDelay < 0 ? 0 : hud_aniDelay;
         }
 
-        vTaskDelay(5 + hud_aniDelay); // keep animation frame rate, and do other tasks
+        vTaskDelay(LOOP2_MIN_DELAY + MS_TO_RTOS_TICKS(hud_aniDelay)); // keep animation frame rate, and do other tasks
     }
 }
 
@@ -101,6 +108,7 @@ void state_machine(uint32_t now)
             hud_state = HUDSTATE_MOVING;
             hud_animation = HUDANI_SPEEDOMETER;
             hud_animation_queue = HUDANI_OFF;
+            dbg_ser.printf("[%u]: SM init -> moving\r\n", now);
         }
         else if (car_data.ignition != false)
         {
@@ -108,6 +116,7 @@ void state_machine(uint32_t now)
             hud_animation = HUDANI_INTRO;
             hud_animation_queue = HUDANI_OFF;
             hud_aniStep = 0;
+            dbg_ser.printf("[%u]: SM init -> ignition\r\n", now);
         }
         else if (now >= 30 * 60 * 1000)
         {
@@ -120,6 +129,7 @@ void state_machine(uint32_t now)
             hud_animation = HUDANI_VOLTMETER_FADEIN;
             hud_animation_queue = HUDANI_OFF;
             hud_aniStep = 0;
+            dbg_ser.printf("[%u]: SM init -> voltmeter\r\n", now);
         }
     }
     else if (hud_state == HUDSTATE_IDLECHECK)
@@ -130,11 +140,13 @@ void state_machine(uint32_t now)
             hud_animation = HUDANI_VOLTMETER_FADEOUT;
             hud_animation_queue = HUDANI_FADEIN;
             hud_aniStep = 0;
+            dbg_ser.printf("[%u]: SM voltmeter -> moving\r\n", now);
         }
         else if (now >= 30 * 60 * 1000 && car_data.ignition == false)
         {
             hud_state = HUDSTATE_OFF;
             hud_offTime = now;
+            dbg_ser.printf("[%u]: SM idle -> off\r\n", now);
         }
     }
     else if (hud_state == HUDSTATE_IGNITION)
@@ -145,6 +157,7 @@ void state_machine(uint32_t now)
             hud_animation = HUDANI_FADEIN;
             hud_animation_queue = HUDANI_OFF;
             hud_aniStep = 0;
+            dbg_ser.printf("[%u]: SM ignition -> moving\r\n", now);
         }
         else if (car_data.ignition == false)
         {
@@ -153,6 +166,7 @@ void state_machine(uint32_t now)
             hud_animation = HUDANI_VOLTMETER_FADEIN;
             hud_animation_queue = HUDANI_OFF;
             hud_aniStep = 0;
+            dbg_ser.printf("[%u]: SM ignition -> off\r\n", now);
         }
     }
     else if (hud_state == HUDSTATE_MOVING)
@@ -164,6 +178,7 @@ void state_machine(uint32_t now)
             hud_animation = HUDANI_FADEOUT;
             hud_animation_queue = HUDANI_VOLTMETER_FADEIN;
             hud_aniStep = 0;
+            dbg_ser.printf("[%u]: SM moving -> off\r\n", now);
         }
     }
     else if (hud_state == HUDSTATE_OFF)
@@ -172,6 +187,7 @@ void state_machine(uint32_t now)
             hud_animation = HUDANI_VOLTMETER_FADEOUT;
             hud_animation_queue = HUDANI_OFF;
             hud_aniStep = 0;
+            dbg_ser.printf("[%u]: SM voltmeter fadeout\r\n", now);
         }
         if (car_data.ignition != false)
         {

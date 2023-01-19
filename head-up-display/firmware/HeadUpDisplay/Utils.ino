@@ -150,6 +150,8 @@ void srand_check()
     if (has_srand) {
         return;
     }
-    srand(esp_random());
+    uint32_t seed;
+    srand(seed = esp_random());
     has_srand = true;
+    dbg_ser.printf("[%u]: SRAND seeded 0x%08X\r\n", millis(), seed);
 }
