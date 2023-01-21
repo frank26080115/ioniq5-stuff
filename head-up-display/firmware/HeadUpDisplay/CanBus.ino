@@ -12,6 +12,8 @@ uint8_t canbus_bufferTx[ISOTP_BUFSIZE_TX];
 uint8_t canbus_payloadRx[ISOTP_BUFSIZE_RX];
 uint8_t canbus_payloadTx[ISOTP_BUFSIZE_TX];
 
+extern int32_t obdstat_txCnt;
+
 void canbus_init()
 {
     // Initialize configuration structures using macro initializers
@@ -26,10 +28,10 @@ void canbus_init()
             dbg_ser.println("CAN bus driver installed and started");
         }
         else {
-            dbg_ser.println("CAN bus driver installed but failed to start");
+            Serial.println("CAN bus driver installed but failed to start");
         }
     } else {
-        dbg_ser.println("CAN bus driver failed to install");
+        Serial.println("CAN bus driver failed to install");
     }
 
     isotp_init_link(&isotp_link, CANBUS_TX_ID, canbus_bufferTx, ISOTP_BUFSIZE_TX, canbus_bufferRx, ISOTP_BUFSIZE_RX);
@@ -127,6 +129,8 @@ void canbus_queryEnhancedPid(uint16_t pid, uint16_t devid)
     // technically the correct way of doing this is to initialize two different link objects, but that wastes a lot of buffer
 
     isotp_send_with_id(&isotp_link, devid, canbus_payloadTx, 3);
+
+    obdstat_txCnt++;
 }
 
 void canbus_queryStandardPid(uint8_t pid, uint16_t devid)

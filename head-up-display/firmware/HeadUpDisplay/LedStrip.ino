@@ -242,6 +242,7 @@ void strip_indicateRegen()
 
 void stripe_animate_step()
 {
+    #if 0
     bool need_show = false;
     switch (hud_animation)
     {
@@ -372,21 +373,43 @@ void stripe_animate_step()
             }
             break;
         case HUDANI_FADEIN_FADESCROLL:
+        case HUDANI_FADEIN_FADESCROLL_INSIDEOUT:
+        case HUDANI_FADEIN_FADESCROLL_OUTSIDEIN:
             {
                 strip_aniFadeInReport();
                 hud_aniDelay = 50;
                 need_show = true;
                 int fully_lit = hud_aniStep / 256;
                 int last_brightness = hud_aniStep % 256;
-                int i, j;
-                for (i = 0, j = 0; i < LED_STRIP_SIZE && j < fully_lit; i += SPEED_TICK_SPACING, j++)
+                int briten_speed = 8;
+                int i, j, k1, k2;
+                for (i = 0, j = 0;
+                    ((hud_animation == HUDANI_FADEIN_FADESCROLL && i < LED_STRIP_SIZE) || (hud_animation != HUDANI_FADEIN_FADESCROLL && i < ((LED_STRIP_SIZE + 1) / 2)))
+                    && j < fully_lit;
+                    i += SPEED_TICK_SPACING, j++)
                 {
-                    leds[i] = CRGB_BLUE(hud_settings.ledbrite_tick);
+                    if (hud_animation == HUDANI_FADEIN_FADESCROLL) {
+                        leds[i] = CRGB_BLUE(hud_settings.ledbrite_tick);
+                    }
+                    else {
+                        k1 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE + 1) / 2) - i);
+                        k2 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE + 1) / 2) + i);
+                        leds[k1] = CRGB_BLUE(hud_settings.ledbrite_tick);
+                        leds[k2] = CRGB_BLUE(hud_settings.ledbrite_tick);
+                    }
                 }
-                if (i < LED_STRIP_SIZE)
+                if (hud_animation == HUDANI_FADEIN_FADESCROLL && i < LED_STRIP_SIZE)
                 {
                     leds[i] = CRGB_BLUE(last_brightness);
-                    hud_aniStep += 8;
+                    hud_aniStep += briten_speed;
+                }
+                else if (hud_animation != HUDANI_FADEIN_FADESCROLL && i < ((LED_STRIP_SIZE + 1) / 2))
+                {
+                    k1 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE + 1) / 2) - i);
+                    k2 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE + 1) / 2) + i);
+                    leds[k1] = CRGB_BLUE(last_brightness);
+                    leds[k2] = CRGB_BLUE(last_brightness);
+                    hud_aniStep += briten_speed;
                 }
                 else
                 {
@@ -396,24 +419,44 @@ void stripe_animate_step()
             }
             break;
         case HUDANI_FADEOUT_SEQ:
+        case HUDANI_FADEOUT_SEQ_OUTSIDEIN:
+        case HUDANI_FADEOUT_SEQ_INSIDEOUT:
             {
                 strip_aniFadeOutReport();
                 hud_aniDelay = 50;
                 need_show = true;
                 int fully_dim = hud_aniStep / 256;
                 int last_brightness = 255 - (hud_aniStep % 256);
-                int i, j;
+                int i, j, k1, k2;
                 if (hud_aniStep == 0) {
-                    strip_speedometer(0);
+                    strip_speedometer(0); // ensure blank bar but fully lit ticks
                 }
-                for (i = LED_STRIP_SIZE - 1, j = 0; i >= 0 && j < fully_dim; i -= SPEED_TICK_SPACING, j++)
+                for (i = LED_STRIP_SIZE - 1, j = 0;
+                    ((hud_animation == HUDANI_FADEOUT_SEQ && i >= 0) || (hud_animation != HUDANI_FADEOUT_SEQ && i >= ((LED_STRIP_SIZE + 1) / 2)))
+                    && j < fully_dim;
+                    i -= SPEED_TICK_SPACING, j++)
                 {
-                    leds[i] = CRGB_BLUE(0);
+                    if (hud_animation == HUDANI_FADEOUT_SEQ) {
+                        leds[i] = CRGB_BLUE(0);
+                    }
+                    else {
+                        k1 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE + 1) / 2) - i);
+                        k2 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE + 1) / 2) + i);
+                        leds[k1] = CRGB_BLUE(0);
+                        leds[k2] = CRGB_BLUE(0);
+                    }
                 }
-                if (i >= 0)
+                if (hud_animation == HUDANI_FADEOUT_SEQ && i >= 0)
                 {
                     leds[i] = CRGB_BLUE(last_brightness);
                     hud_aniStep += 8;
+                }
+                else if (hud_animation != HUDANI_FADEOUT_SEQ && i >= ((LED_STRIP_SIZE + 1) / 2))
+                {
+                    k1 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE + 1) / 2) - i);
+                    k2 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE + 1) / 2) + i);
+                    leds[k1] = CRGB_BLUE(last_brightness);
+                    leds[k2] = CRGB_BLUE(last_brightness);
                 }
                 else
                 {
@@ -424,13 +467,15 @@ void stripe_animate_step()
             break;
         case HUDANI_FADEIN_SCROLL:
         case HUDANI_FADEIN_SCROLLFADE:
+        case HUDANI_FADEIN_SCROLL_OUTSIDEIN:
+        case HUDANI_FADEIN_SCROLL_OUTSIDEIN_FADE:
             {
                 strip_aniFadeInReport();
                 hud_aniDelay = 2000 / LED_STRIP_SIZE;
                 need_show = true;
                 int i;
                 volatile int brite = hud_settings.ledbrite_tick;
-                if (hud_animation == HUDANI_FADEIN_SCROLLFADE) {
+                if (hud_animation == HUDANI_FADEIN_SCROLLFADE || hud_animation == HUDANI_FADEIN_SCROLL_OUTSIDEIN_FADE) {
                     brite *= hud_aniStep;
                     brite /= LED_STRIP_SIZE;
                     brite = brite > hud_settings.ledbrite_tick ? hud_settings.ledbrite_tick : brite;
@@ -439,9 +484,13 @@ void stripe_animate_step()
                 for (i = hud_aniStep; i >= 0; i -= SPEED_TICK_SPACING)
                 {
                     leds[i] = CRGB_BLUE(brite);
+                    if (hud_animation >= HUDANI_FADEIN_SCROLL_OUTSIDEIN) {
+                        leds[LED_STRIP_SIZE - i - 1] = CRGB_BLUE(brite);
+                    }
                 }
                 hud_aniStep += 1;
-                if (hud_aniStep >= LED_STRIP_SIZE) {
+                if ((hud_animation >= HUDANI_FADEIN_SCROLL_OUTSIDEIN && hud_aniStep >= ((LED_STRIP_SIZE + 1) / 2)) || (hud_aniStep >= LED_STRIP_SIZE))
+                {
                     dbg_ser.printf("[%u]: ANI fade-in %d done -> speedometer\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_SPEEDOMETER;
                 }
@@ -679,6 +728,7 @@ void stripe_animate_step()
         strip_debug();
         #endif
     }
+    #endif
 }
 
 void strip_debug()

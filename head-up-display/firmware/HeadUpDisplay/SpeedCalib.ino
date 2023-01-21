@@ -1,6 +1,7 @@
 #include "HeadUpDisplay.h"
 
 bool speedcalib_active = false;
+bool speedcalib_log = false;
 
 float speedcalib_convert(float rpm)
 {
@@ -32,6 +33,10 @@ void speedcalib_task(uint32_t now)
 
     if (speedcalib_active == false && hud_settings.speed_multiplier != 0) {
         return;
+    }
+
+    if (hud_settings.speed_multiplier == 0) {
+        speedcalib_active |= true;
     }
 
     if (save_timer != 0 && m_lpf > 0)

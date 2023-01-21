@@ -8,9 +8,11 @@ extern bool obd_hasNewSpeed;
 
 void bringup_tests()
 {
+    //bringuptest_sdcard();
     //bringuptest_heartbeat();
     //bringuptest_canbusquery();
     //bringuptest_canbusspy();
+    bringuptest_speedcalibration();
 }
 
 void bringuptest_sdcard()
@@ -92,5 +94,33 @@ void bringuptest_stripAnimation()
     {
         stripe_animate_step();
         vTaskDelay(5 + hud_aniDelay);
+    }
+}
+
+extern bool speedcalib_log;
+extern bool speedcalib_active;
+void bringuptest_speedcalibration()
+{
+    static uint32_t last_time = 0;
+    uint32_t now;
+    dbg_ser.enabled = true;
+    heartbeat_init();
+    canbus_init();
+    battlog_init();
+    battlog_startNewLog();
+    speedcalib_log = true;
+    speedcalib_active = true;
+    obd_poll_mode = OBDPOLLMODE_SIMPLE;
+    while (true)
+    {
+        canbus_poll();
+        obd_queryTask(now = millis());
+        speedcalib_task(now);
+        car_data.speed_mph = speedcalib_convert(spdpredict_get(now));
+        battlog_task(now);
+        heartbeat_task(now);
+        obdstat_reportTask(now);
+        esp_task_wdt_reset();
+        vTaskDelay(5);
     }
 }

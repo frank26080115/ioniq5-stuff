@@ -13,6 +13,12 @@ bool     obd_hasNewLog = false;
 bool     obd_hasNewSpeed = false;
 bool     obd_isResponding = false;
 
+int32_t obdstat_rxCnt = 0;
+int32_t obdstat_txCnt = 0;
+int32_t obdstat_logCnt = 0;
+
+extern bool speedcalib_log;
+
 void obd_queryTask(uint32_t tnow)
 {
     static uint8_t tick = 0;
@@ -31,7 +37,7 @@ void obd_queryTask(uint32_t tnow)
         obd_isResponding = false;
     }
 
-    if ((obd_queryPending == false && (tnow - obd_lastQueryTime) >= qrate * obd_debug_rate) || (obd_queryPending != false && obd_isResponding != false))
+    if ((obd_queryPending == false && (tnow - obd_lastQueryTime) >= qrate * obd_debug_rate) || (obd_queryPending != false && (tnow - obd_lastQueryTime) >= 500) || (obd_queryPending != false && obd_isResponding != false))
     {
         if (obd_poll_mode != OBDPOLLMODE_IDLE)
         {
@@ -192,6 +198,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
             //obd_firstTimeMs = (obd_firstTimeMs == 0) ? millis() : obd_firstTimeMs;
             //obd_firstTimeUs = (obd_firstTimeUs == 0) ? micros() : obd_firstTimeUs;
             obd_isResponding = true;
+            obdstat_rxCnt++;
             *ptr16 = datalen;
             memcpy((void*)(&(ptr16[1])), (const void*)data, (size_t)datalen);
 
@@ -430,7 +437,11 @@ void obd_printLog(Print* p)
     tmp /= 1000.0;
     p->printf("%0.1f, ", tmp);
 
-    p->printf("%u, %0.1f, %d, %u, ", car_data.rpm, car_data.speed_mph, car_data.speed_kmh, car_data.throttle);
+    p->printf("%u, %0.1f, %d, ", car_data.rpm, car_data.speed_mph, car_data.speed_kmh);
+
+    if (speedcalib_log != false) {
+        p->printf("%u, %u, %u, %u, ", hud_settings.speed_multiplier, hud_settings.speed_kmh_max, hud_settings.speed_calib_rpm, hud_settings.speed_calib_kmh);
+    }
 
     p->printf("%u, 0x%02X, ", car_data.ignition, car_data.charge_mode);
 
@@ -496,4 +507,17 @@ void obd_printLog(Print* p)
 
     obd_printCellVoltages(p);
     obd_printBattBankTemperatures(p);
+
+    obdstat_logCnt++;
+}
+
+void obdstat_reportTask(uint32_t now)
+{
+    static uint32_t last_time = 0;
+    
+    if ((now - last_time) >= 1000)
+    {
+        last_time = now;
+        dbg_ser.printf("[%u]: OBD2-STAT: %u ; %u ; %u\r\n", now, obdstat_rxCnt, obdstat_txCnt, obdstat_logCnt);
+    }
 }

@@ -8,6 +8,7 @@
 
 bool battlog_cardReady = false;
 bool battlog_fileReady = false;
+uint8_t battlog_writeErrCnt;
 
 char battlog_filename[64] = { 0 };
 
@@ -114,6 +115,7 @@ void battlog_startNewLog()
     {
         Serial.printf("Opened file %s for logging\r\n", battlog_filename);
         battlog_fileReady = true;
+        battlog_writeErrCnt = 0;
     }
 }
 
@@ -134,9 +136,39 @@ void battlog_log()
     }
     Print* p1 = dynamic_cast<Print*>(&battlog_filePtr);
     log_printer.destinations[LOGPRINTER_IDX_SDCARD] = p1;
+    if (p1 == NULL) {
+        Serial.printf("ERROR: battlog_filePtr failed to cast into Print*\r\n");
+    }
     Print* p2 = dynamic_cast<Print*>(&log_printer);
+    if (p1 == NULL) {
+        Serial.printf("ERROR: log_printer failed to cast into Print*\r\n");
+    }
+
+    volatile uint32_t start_time = millis(); // for time measurement, checks for card timeout event, getWriteError on the file pointer does not work
+
     obd_printLog(p2);
     p2->printf("\r\n");
+    battlog_filePtr.flush();
+
+    volatile uint32_t end_time = millis();
+    volatile uint32_t dtime = end_time - start_time;
+    if (dtime >= 200) // checks for card timeout event, getWriteError on the file pointer does not work
+    {
+        battlog_writeErrCnt++;
+        battlog_filePtr.clearWriteError();
+        if ((car_data.ignition == false && battlog_writeErrCnt > 1) || (car_data.ignition != false && battlog_writeErrCnt >= 1)) {
+            battlog_fileReady = false;
+            battlog_cardReady = false;
+            Serial.printf("[%u]: SD write error\r\n", millis());
+            if (car_data.ignition == false) {
+                // TODO: reinitialize?
+            }
+        }
+    }
+    else
+    {
+        battlog_writeErrCnt = 0;
+    }
 }
 
 void battlog_task(uint32_t now)
@@ -145,7 +177,8 @@ void battlog_task(uint32_t now)
         return;
     }
 
-    static uint32_t last_time = 0;
+    static uint32_t last_log_time = 0;
+    //static uint32_t last_flush_time = 0;
 
     uint32_t tick_interval = 1000;
 
@@ -156,13 +189,13 @@ void battlog_task(uint32_t now)
         tick_interval = 500;
     }
 
-    if ((now - last_time) >= tick_interval)
+    if ((now - last_log_time) >= tick_interval)
     {
-        if ((now - last_time) >= tick_interval * 2) {
-            last_time = now;
+        if ((now - last_log_time) >= tick_interval * 2) {
+            last_log_time = now;
         }
         else {
-            last_time += tick_interval;
+            last_log_time += tick_interval;
         }
         battlog_log();
     }

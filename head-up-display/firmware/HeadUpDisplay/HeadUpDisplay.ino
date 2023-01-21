@@ -18,7 +18,7 @@
 TaskHandle_t loop2task;
 
 vehicle_data_t car_data = {0};
-settings_t hud_settings;
+settings_t hud_settings = {0};
 uint8_t hud_state = HUDSTATE_INIT;
 
 uint8_t hud_animation = HUDANI_OFF, hud_animation_queue = HUDANI_OFF;

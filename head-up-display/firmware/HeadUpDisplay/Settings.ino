@@ -7,14 +7,19 @@ extern uint32_t fletcher32(const uint16_t *data, size_t len);
 //#define CHECKSUM(_buf, _len) crc32_le(0, (uint8_t*)(_buf), (size_t)(_len))
 #define CHECKSUM(_buf, _len) fletcher32((const uint16_t*)(_buf), (size_t)(_len))
 
-void settings_default() {
-  hud_settings.len = sizeof(settings_t);
+void settings_default()
+{
+    hud_settings.len = sizeof(settings_t);
 
-  // set the default setting values here
-  
-  hud_settings.ledbrite_tick = 0xFF;
-  hud_settings.ledbrite_bar  = 0xFF;
-  hud_settings.ledbrite_volt = 0x80;
+    // set the default setting values here
+    hud_settings.speed_multiplier = 0;
+    hud_settings.speed_kmh_max = 0;
+    hud_settings.speed_calib_rpm = 0;
+    hud_settings.speed_calib_kmh = 0;
+
+    hud_settings.ledbrite_tick = 0xFF;
+    hud_settings.ledbrite_bar  = 0xFF;
+    hud_settings.ledbrite_volt = 0x80;
 }
 
 bool settings_load() {
