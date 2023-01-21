@@ -10,3 +10,6 @@
 [submodule "head-up-display/firmware/libraries/FastLED"]
 	path = head-up-display/firmware/libraries/FastLED
 	url = https://github.com/FastLED/FastLED.git
+[submodule "head-up-display/firmware/libraries/SD"]
+	path = head-up-display/firmware/libraries/SD
+	url = https://github.com/arduino-libraries/SD.git
