@@ -32,7 +32,7 @@ void strip_speedometer(double speed)
 
     spdmax1 = LED_STRIP_SIZE / SPEED_TICK_SPACING;
     spdmax1 *= tickspeed; // result should be 80
-    spdmax2 = SPEED_MAX; // limit beyond the last tick
+    spdmax2 = SPEED_MAX;  // limit beyond the last tick
 
     // there's a offset between the readings here and my car's real speedometer
     // I wanted to shift the needle another LED up
@@ -242,7 +242,6 @@ void strip_indicateRegen()
 
 void stripe_animate_step()
 {
-    #if 0
     bool need_show = false;
     switch (hud_animation)
     {
@@ -320,7 +319,7 @@ void stripe_animate_step()
             hud_aniStep = 0;
             hud_aniDelay = 100;
             need_show = true;
-            dbg_ser.printf("[%u]: ANI fade out end -> %u\r\n", millis(), hud_animation);
+            dbg_ser.printf("[%u]: ANI fade-out end -> %u\r\n", millis(), hud_animation);
             break;
         case HUDANI_FADEIN_ALL:
         case HUDANI_FADEIN_MELT:
@@ -477,7 +476,7 @@ void stripe_animate_step()
                 volatile int brite = hud_settings.ledbrite_tick;
                 if (hud_animation == HUDANI_FADEIN_SCROLLFADE || hud_animation == HUDANI_FADEIN_SCROLL_OUTSIDEIN_FADE) {
                     brite *= hud_aniStep;
-                    brite /= LED_STRIP_SIZE;
+                    brite /= LED_STRIP_SIZE * (hud_animation >= HUDANI_FADEIN_SCROLL_OUTSIDEIN ? 2 : 1);
                     brite = brite > hud_settings.ledbrite_tick ? hud_settings.ledbrite_tick : brite;
                 }
                 strip_blank();
@@ -496,8 +495,49 @@ void stripe_animate_step()
                 }
             }
             break;
+        case HUDANI_FADEOUT_SCROLL:
+        case HUDANI_FADEOUT_SCROLLFADE:
+        case HUDANI_FADEOUT_SCROLL_INSIDEOUT:
+        case HUDANI_FADEOUT_SCROLL_INSIDEOUT_FADE:
+            {
+                strip_aniFadeOutReport();
+                hud_aniDelay = 2000 / LED_STRIP_SIZE;
+                need_show = true;
+                int i, j;
+                volatile int brite = hud_settings.ledbrite_tick;
+                if (hud_animation == HUDANI_FADEOUT_SCROLLFADE || hud_animation == HUDANI_FADEOUT_SCROLL_INSIDEOUT_FADE) {
+                    brite *= hud_aniStep;
+                    brite /= LED_STRIP_SIZE * (hud_animation >= HUDANI_FADEOUT_SCROLL_INSIDEOUT ? 2 : 1);
+                    brite = hud_settings.ledbrite_tick - brite;
+                }
+                brite = brite < 0 ? 0 : brite;
+                strip_blank();
+                if (hud_animation == HUDANI_FADEOUT_SCROLL || hud_animation == HUDANI_FADEOUT_SCROLLFADE) {
+                    i = LED_STRIP_SIZE - 1;
+                }
+                else if (hud_animation >= HUDANI_FADEOUT_SCROLL_INSIDEOUT) {
+                    i = (LED_STRIP_SIZE + 1) / 2;
+                }
+                for (i -= hud_aniStep; i >= 0; i -= SPEED_TICK_SPACING)
+                {
+                    leds[i] = CRGB_BLUE(brite);
+                    if (hud_animation >= HUDANI_FADEOUT_SCROLL_INSIDEOUT) {
+                        leds[LED_STRIP_SIZE - i - 1] = CRGB_BLUE(brite);
+                    }
+                }
+                hud_aniStep += 1;
+                if (i < 0)
+                {
+                    dbg_ser.printf("[%u]: ANI fade-out %d done\r\n", millis(), hud_animation);
+                    hud_animation = HUDANI_FADEOUT_END;
+                }
+            }
+            break;
         case HUDANI_FADEIN_RANDOM:
+        case HUDANI_FADEIN_RANDOM_2:
         case HUDANI_FADEOUT_RANDOM:
+        case HUDANI_FADEOUT_RANDOM_2:
+        case HUDANI_FADEOUT_RANDOM_3:
             {
                 static int16_t rnd_pick;
                 static int16_t rnd_cnt;
@@ -555,6 +595,7 @@ void stripe_animate_step()
             }
             break;
         case HUDANI_FADEIN_FUZZ:
+        case HUDANI_FADEIN_FUZZ_2:
             {
                 strip_aniFadeInReport();
                 if (strip_hasAllTicks()) {
@@ -589,6 +630,7 @@ void stripe_animate_step()
             }
             break;
         case HUDANI_FADEIN_STATIC:
+        case HUDANI_FADEIN_STATIC_2:
             {
                 strip_aniFadeInReport();
                 if (strip_isAllTicks()) {
@@ -728,7 +770,6 @@ void stripe_animate_step()
         strip_debug();
         #endif
     }
-    #endif
 }
 
 void strip_debug()
