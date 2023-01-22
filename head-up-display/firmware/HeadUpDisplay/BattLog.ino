@@ -9,6 +9,7 @@
 bool battlog_cardReady = false;
 bool battlog_fileReady = false;
 uint8_t battlog_writeErrCnt;
+bool battlog_needReinit = false;
 
 char battlog_filename[64] = { 0 };
 
@@ -159,10 +160,8 @@ void battlog_log()
         if ((car_data.ignition == false && battlog_writeErrCnt > 1) || (car_data.ignition != false && battlog_writeErrCnt >= 1)) {
             battlog_fileReady = false;
             battlog_cardReady = false;
+            battlog_needReinit |= true;
             Serial.printf("[%u]: SD write error\r\n", millis());
-            if (car_data.ignition == false) {
-                // TODO: reinitialize?
-            }
         }
     }
     else
@@ -173,12 +172,24 @@ void battlog_log()
 
 void battlog_task(uint32_t now)
 {
-    if (battlog_fileReady == false) {
+    static uint32_t last_log_time = 0;
+
+    if (battlog_fileReady == false)
+    {
+        if (battlog_needReinit != false && car_data.ignition == false && (now - last_log_time) >= 3000)
+        {
+            last_log_time = now;
+            battlog_init();
+            if (battlog_cardReady != false) {
+                battlog_startNewLog();
+                if (battlog_fileReady != false) {
+                    battlog_needReinit = false;
+                }
+            }
+        }
+
         return;
     }
-
-    static uint32_t last_log_time = 0;
-    //static uint32_t last_flush_time = 0;
 
     uint32_t tick_interval = 1000;
 
@@ -197,6 +208,7 @@ void battlog_task(uint32_t now)
         else {
             last_log_time += tick_interval;
         }
+
         battlog_log();
     }
 }

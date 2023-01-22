@@ -40,6 +40,8 @@ void bringuptest_canbusspy()
 
 void bringuptest_canbusquery()
 {
+    uint32_t now;
+    dbg_ser.enabled = true;
     canbus_init();
     obd_debug_dump = true;
     obd_debug_rate = 10;
@@ -48,12 +50,14 @@ void bringuptest_canbusquery()
     while (true)
     {
         canbus_poll();
-        obd_queryTask(millis());
-        if (obd_hasNewLog)
+        obd_queryTask(now = millis());
+        if ((obd_hasNewLog != false && obd_poll_mode == OBDPOLLMODE_BATTLOG_LONG) || (obd_hasNewSpeed != false && obd_poll_mode == OBDPOLLMODE_SIMPLE))
         {
             obd_printLog(dynamic_cast<Print*>(&Serial));
             obd_hasNewLog = false;
+            obd_hasNewSpeed = false;
         }
+        obdstat_reportTask(now);
     }
 }
 

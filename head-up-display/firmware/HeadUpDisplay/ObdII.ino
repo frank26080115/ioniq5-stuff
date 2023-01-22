@@ -37,12 +37,12 @@ void obd_queryTask(uint32_t tnow)
         obd_isResponding = false;
     }
 
-    if ((obd_queryPending == false && (tnow - obd_lastQueryTime) >= qrate * obd_debug_rate) || (obd_queryPending != false && (tnow - obd_lastQueryTime) >= 500) || (obd_queryPending != false && obd_isResponding != false))
+    if ((obd_queryPending == false && (tnow - obd_lastQueryTime) >= qrate * obd_debug_rate) || (obd_queryPending != false && (tnow - obd_lastQueryTime) >= qtimeout))
     {
         if (obd_poll_mode != OBDPOLLMODE_IDLE)
         {
             tick++;
-            tick = tick % (2 * 3 * 5);
+            tick %= 2 * 3 * 5;
             //if (obd_poll_mode == OBDPOLLMODE_EXTRAFAST)
             //{
             //    canbus_queryStandardPid(OBD_PID_SIMPLESPEED, 0x7DF);
@@ -54,7 +54,7 @@ void obd_queryTask(uint32_t tnow)
                 {
                     canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
                 }
-                else // hud_settings.speed_multiplier == 0 || speedcalib_active == false
+                else // hud_settings.speed_multiplier == 0 || speedcalib_active != false
                 {
                     uint32_t tick_mod = tick % 2; // 3;
                     if (tick_mod == 0) {
