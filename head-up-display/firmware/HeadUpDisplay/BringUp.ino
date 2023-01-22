@@ -6,12 +6,16 @@ extern uint8_t obd_poll_mode;
 extern bool obd_hasNewLog;
 extern bool obd_hasNewSpeed;
 
+extern bool speedcalib_log;
+extern bool speedcalib_active;
+
 void bringup_tests()
 {
     //bringuptest_sdcard();
     //bringuptest_heartbeat();
     //bringuptest_canbusquery();
     //bringuptest_canbusspy();
+    //bringuptest_canbusspeed();
     bringuptest_speedcalibration();
 }
 
@@ -45,7 +49,9 @@ void bringuptest_canbusquery()
     canbus_init();
     obd_debug_dump = true;
     obd_debug_rate = 10;
-    obd_poll_mode = OBDPOLLMODE_BATTLOG_LONG;
+    obd_poll_mode = OBDPOLLMODE_SIMPLE;
+    speedcalib_log = true;
+    speedcalib_active = true;
     Serial.println("testing CAN bus polling");
     while (true)
     {
@@ -63,20 +69,15 @@ void bringuptest_canbusquery()
 
 void bringuptest_canbusspeed()
 {
+    uint32_t now;
     canbus_init();
-    obd_debug_dump = true;
-    obd_debug_rate = 10;
-    //obd_poll_mode = OBDPOLLMODE_EXTRAFAST;
+    obd_poll_mode = OBDPOLLMODE_SIMPLE;
     Serial.println("testing CAN bus speed polling");
     while (true)
     {
         canbus_poll();
-        obd_queryTask(millis());
-        if (obd_hasNewSpeed)
-        {
-            obd_printLog(dynamic_cast<Print*>(&Serial));
-            obd_hasNewSpeed = false;
-        }
+        obd_queryTask(now = millis());
+        obdstat_reportTask(now);
     }
 }
 
@@ -101,8 +102,6 @@ void bringuptest_stripAnimation()
     }
 }
 
-extern bool speedcalib_log;
-extern bool speedcalib_active;
 void bringuptest_speedcalibration()
 {
     static uint32_t last_time = 0;

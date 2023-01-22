@@ -24,7 +24,7 @@ void obd_queryTask(uint32_t tnow)
     static uint8_t tick = 0;
     static uint32_t item = 0;
 
-    uint32_t qrate = 51;
+    uint32_t qrate = 40; // value of 51 here got about 10 updates per second, unable to push it any faster
     uint32_t qtimeout = 200;
 
     if (car_data.ignition == false)
@@ -518,6 +518,6 @@ void obdstat_reportTask(uint32_t now)
     if ((now - last_time) >= 1000)
     {
         last_time = now;
-        dbg_ser.printf("[%u]: OBD2-STAT: %u ; %u ; %u\r\n", now, obdstat_rxCnt, obdstat_txCnt, obdstat_logCnt);
+        Serial.printf("[%u]: OBD2-STAT: %u ; %u ; %u\r\n", now, obdstat_rxCnt, obdstat_txCnt, obdstat_logCnt);
     }
 }

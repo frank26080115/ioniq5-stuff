@@ -26,4 +26,6 @@
 #define SPEED_MAX            120
 #define FADING_HEAD
 
+#define HEARTBEAT_BRIGHTNESS 64
+
 #endif

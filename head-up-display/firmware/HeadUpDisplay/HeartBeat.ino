@@ -23,7 +23,7 @@ void heartbeat_task(uint32_t now)
     {
         if (heartbeat_isOn == false)
         {
-            uint8_t brite = 128;
+            uint8_t brite = HEARTBEAT_BRIGHTNESS;
             tick++;
             if (obd_isResponding == false)
             {
