@@ -12,7 +12,8 @@ void settings_default()
     hud_settings.len = sizeof(settings_t);
 
     // set the default setting values here
-    hud_settings.speed_multiplier = 0;
+    //hud_settings.speed_multiplier = 0;
+    hud_settings.speed_multiplier = RPM2MPH_E6;
     hud_settings.speed_kmh_max = 0;
     hud_settings.speed_calib_rpm = 0;
     hud_settings.speed_calib_kmh = 0;

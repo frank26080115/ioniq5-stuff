@@ -135,44 +135,43 @@ void battlog_log()
     if (battlog_fileReady == false) {
         return;
     }
-    Print* p1 = dynamic_cast<Print*>(&battlog_filePtr);
+    log_cacher.reset();
+    Print* p1 = dynamic_cast<Print*>(&log_cacher);
     log_printer.destinations[LOGPRINTER_IDX_SDCARD] = p1;
     if (p1 == NULL) {
-        Serial.printf("ERROR: battlog_filePtr failed to cast into Print*\r\n");
+        Serial.printf("ERROR: log_cacher failed to cast into Print*\r\n");
+    }
+    if (log_cacher.c_str() == NULL) {
+        Serial.printf("ERROR: log_cacher cache is null\r\n");
     }
     Print* p2 = dynamic_cast<Print*>(&log_printer);
     if (p1 == NULL) {
         Serial.printf("ERROR: log_printer failed to cast into Print*\r\n");
     }
 
-    volatile uint32_t start_time = millis(); // for time measurement, checks for card timeout event, getWriteError on the file pointer does not work
-
     obd_printLog(p2);
     p2->printf("\r\n");
-    battlog_filePtr.flush();
 
-    volatile uint32_t end_time = millis();
-    volatile uint32_t dtime = end_time - start_time;
-    if (dtime >= 200) // checks for card timeout event, getWriteError on the file pointer does not work
+    int i;
+    uint8_t* s = (uint8_t*)log_cacher.c_str();
+    Serial.print((const char*)s);
+    for (i = 0; ; i++)
     {
-        battlog_writeErrCnt++;
-        battlog_filePtr.clearWriteError();
-        if ((car_data.ignition == false && battlog_writeErrCnt > 1) || (car_data.ignition != false && battlog_writeErrCnt >= 1)) {
-            battlog_fileReady = false;
-            battlog_cardReady = false;
-            battlog_needReinit |= true;
-            Serial.printf("[%u]: SD write error\r\n", millis());
+        uint8_t x = s[i];
+        if (x == 0) {
+            break;
         }
-    }
-    else
-    {
-        battlog_writeErrCnt = 0;
+        battlog_filePtr.write(x);
+        if (battlog_filePtr.getWriteError() != 0) {
+            break;
+        }
     }
 }
 
 void battlog_task(uint32_t now)
 {
     static uint32_t last_log_time = 0;
+    static uint32_t last_flush_time = 0;
 
     if (battlog_fileReady == false)
     {
@@ -202,6 +201,8 @@ void battlog_task(uint32_t now)
 
     if ((now - last_log_time) >= tick_interval)
     {
+        last_flush_time = last_log_time == 0 ? now : last_flush_time; // don't flush on the first ever execution of task
+
         if ((now - last_log_time) >= tick_interval * 2) {
             last_log_time = now;
         }
@@ -209,6 +210,33 @@ void battlog_task(uint32_t now)
             last_log_time += tick_interval;
         }
 
+        volatile uint32_t start_time = millis(); // for time measurement, checks for card timeout event, getWriteError on the file pointer does not work
+
         battlog_log();
+
+        if ((now - last_flush_time) >= 5000 && battlog_filePtr.getWriteError() == 0)
+        {
+            battlog_filePtr.flush();
+            last_flush_time = now;
+        }
+
+        volatile uint32_t end_time = millis(); // for time measurement, checks for card timeout event, getWriteError on the file pointer does not work
+
+        volatile uint32_t dtime = end_time - start_time;
+        if (dtime >= 200 || battlog_filePtr.getWriteError() != 0) // checks for card timeout event, getWriteError on the file pointer does not always work
+        {
+            battlog_writeErrCnt++;
+            battlog_filePtr.clearWriteError();
+            if ((car_data.ignition == false && battlog_writeErrCnt > 1) || (car_data.ignition != false && battlog_writeErrCnt >= 1)) {
+                battlog_fileReady = false;
+                battlog_cardReady = false;
+                battlog_needReinit |= true;
+                Serial.printf("[%u]: SD write error\r\n", millis());
+            }
+        }
+        else
+        {
+            battlog_writeErrCnt = 0;
+        }
     }
 }

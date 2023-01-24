@@ -4,9 +4,9 @@
 #include <SerialCmdLine.h>
 #include <WebSocketPrinter.h>
 #include <MultiDestPrinter.h>
+#include <StringPrinter.h>
 #include <AsyncAdc.h>
 #include <isotp.h>
-//#include <Adafruit_DotStar.h>
 #include <FastLED.h>
 
 #include <FS.h>
@@ -26,6 +26,7 @@ int32_t hud_aniStep, hud_aniDelay;
 uint32_t hud_offTime;
 
 MultiDestPrinter log_printer;
+StringPrinter log_cacher(1024 * 4);
 
 DebuggingSerial dbg_ser(&Serial);
 extern SerialCmdLine cmdline;

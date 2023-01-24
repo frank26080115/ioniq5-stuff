@@ -16,7 +16,8 @@ void bringup_tests()
     //bringuptest_canbusquery();
     //bringuptest_canbusspy();
     //bringuptest_canbusspeed();
-    bringuptest_speedcalibration();
+    //bringuptest_speedcalibration();
+    bringuptest_stripAnimation();
 }
 
 void bringuptest_sdcard()
@@ -93,12 +94,28 @@ void bringuptest_heartbeat()
 void bringuptest_stripAnimation()
 {
     strip_init();
-    hud_animation = HUDANI_FADEIN;
+    uint8_t repeat_animation = HUDANI_VOLTMETER_FADEOUT;
+    car_data.aux_batt_volt_x10 = 120;
+    hud_animation = 0;
     hud_aniStep = 0;
     while (true)
     {
+        if (repeat_animation != hud_animation)
+        {
+            hud_animation = repeat_animation;
+            hud_aniStep = 0;
+            Serial.println("animation start");
+            if (repeat_animation >= HUDANI_FADEIN && repeat_animation < HUDANI_FADEOUT)
+            {
+                strip_blank();
+            }
+            else if (repeat_animation >= HUDANI_FADEOUT && repeat_animation <= HUDANI_FADEOUT_END)
+            {
+                strip_speedometer(0);
+            }
+        }
         stripe_animate_step();
-        vTaskDelay(5 + hud_aniDelay);
+        vTaskDelay(LOOP2_MIN_DELAY + MS_TO_RTOS_TICKS(hud_aniDelay));
     }
 }
 
@@ -119,7 +136,7 @@ void bringuptest_speedcalibration()
         canbus_poll();
         obd_queryTask(now = millis());
         speedcalib_task(now);
-        car_data.speed_mph = speedcalib_convert(spdpredict_get(now));
+        car_data.speed_mph = speedcalib_convert(car_data.speed_rpm);
         battlog_task(now);
         heartbeat_task(now);
         obdstat_reportTask(now);

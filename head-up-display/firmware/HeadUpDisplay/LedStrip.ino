@@ -2,12 +2,12 @@
 
 extern void hsv2rgb_rainbow(const CHSV &hsv, CRGB &rgb);
 
-CRGB leds[LED_STRIP_SIZE];
+CRGB leds[LED_STRIP_SIZE_VIRTUAL];
 CLEDController* strip_ctrler;
 
 void strip_init()
 {
-    strip_ctrler = &FastLED.addLeds<DOTSTAR, HUD_PIN_STRIP_DATA, HUD_PIN_STRIP_CLK, BGR>(leds, LED_STRIP_SIZE);
+    strip_ctrler = &FastLED.addLeds<DOTSTAR, HUD_PIN_STRIP_DATA, HUD_PIN_STRIP_CLK, BGR>(leds, LED_STRIP_SIZE_VIRTUAL);
 }
 
 void strip_task(uint32_t now)
@@ -104,28 +104,28 @@ void strip_speedometer(double speed)
     {
         if (i == 0 && speed < 0.5)
         {
-            leds[i] = CRGB_BLACK(); // this will be overwritten by the first tick
+            GET_LED(i) = CRGB_BLACK(); // this will be overwritten by the first tick
         }
         else if (i <= baridx && i >= (baridx - trailsize)) // is part of the needle
         {
             #ifdef FADING_HEAD
             if (i == baridx)
             {
-                leds[i] = CRGB_ORANGE(headbrighti, 4);
+                GET_LED(i) = CRGB_ORANGE(headbrighti, 4);
             }
             else if (i == (baridx - trailsize))
             {
-                leds[i] = CRGB_ORANGE(hud_settings.ledbrite_bar - headbrighti, 4);
+                GET_LED(i) = CRGB_ORANGE(hud_settings.ledbrite_bar - headbrighti, 4);
             }
             else
             #endif
             {
-                leds[i] = CRGB_ORANGE(hud_settings.ledbrite_bar, 4);
+                GET_LED(i) = CRGB_ORANGE(hud_settings.ledbrite_bar, 4);
             }
         }
         else
         {
-            leds[i] = CRGB_BLACK(); // default to nothing
+            GET_LED(i) = CRGB_BLACK(); // default to nothing
         }
 
         if ((i % tickspace) == 0) // is a tick
@@ -133,41 +133,47 @@ void strip_speedometer(double speed)
             if (i <= baridx)
             {
                 if (i == 0) {
-                    leds[i] = CRGB_BLUE(hud_settings.ledbrite_tick);
+                    GET_LED(i) = CRGB_BLUE(hud_settings.ledbrite_tick);
                 }
                 else if ((i / tickspace) <= 4) {
-                    leds[i] = CRGB_RED(hud_settings.ledbrite_tick);
+                    GET_LED(i) = CRGB_RED(hud_settings.ledbrite_tick);
                 }
                 else {
-                    leds[i] = CRGB_PURPLE(hud_settings.ledbrite_tick);
+                    GET_LED(i) = CRGB_PURPLE(hud_settings.ledbrite_tick);
                 }
             }
             else {
-                leds[i] = CRGB_BLUE(hud_settings.ledbrite_tick);
+                GET_LED(i) = CRGB_BLUE(hud_settings.ledbrite_tick);
             }
         }
     }
 
-    if (leds[0].r == 0 && leds[0].g == 0 && leds[0].b == 0) {
-        leds[0] = CRGB_BLUE(hud_settings.ledbrite_tick);
+    if (GET_LED(0).r == 0 && GET_LED(0).g == 0 && GET_LED(0).b == 0) {
+        GET_LED(0) = CRGB_BLUE(hud_settings.ledbrite_tick);
     }
 }
 
 void strip_voltmeter(float v, uint8_t b)
 {
     int tick_space = 12;
-    float y = mapf(v, 11.5, 13, 0, VOLT_TICK_SPACING * 5);
+    float y = mapf(v, 11.3, 13, 0, VOLT_TICK_SPACING * 5);
     int yi = lround(y);
+    if (v > 0) {
+        yi = yi < 2 ? 2 : yi;
+    }
     int i;
     for (i = 0; i < LED_STRIP_SIZE; i++)
     {
         if ((i % tick_space) == 0)
         {
             if (yi >= LED_STRIP_SIZE) {
-                leds[i] = CRGB_PURPLE(b);
+                GET_LED(i) = CRGB_PURPLE(b);
+            }
+            else if (v <= 0) {
+                GET_LED(i) = CRGB_RED(b);
             }
             else {
-                leds[i] = CRGB_BLUE(b);
+                GET_LED(i) = CRGB_BLUE(b);
             }
         }
         else if (i <= yi)
@@ -175,11 +181,11 @@ void strip_voltmeter(float v, uint8_t b)
             int h = lround(mapf(i, 0, LED_STRIP_SIZE - (LED_STRIP_SIZE / 4), HUE_RED, HUE_GREEN));
             h = h > HUE_GREEN ? HUE_GREEN : h;
             CHSV hsv = CHSV(h, 255, b);
-            hsv2rgb_rainbow(hsv, leds[i]);
+            hsv2rgb_rainbow(hsv, GET_LED(i));
         }
         else
         {
-            leds[i] = CRGB_BLACK();
+            GET_LED(i) = CRGB_BLACK();
         }
     }
 }
@@ -227,9 +233,9 @@ void strip_indicateRegen()
             }
         }
         i = tick * SPEED_TICK_SPACING;
-        leds[i].r /= 2;
-        leds[i].g /= 2;
-        leds[i].b /= 2;
+        GET_LED(i).r /= 2;
+        GET_LED(i).g /= 2;
+        GET_LED(i).b /= 2;
 
         was_regen = true;
     }
@@ -274,16 +280,16 @@ void stripe_animate_step()
                 s = (stage < size) ? stage : size;
 
                 for (i = 0; i < LED_STRIP_SIZE; i++) {
-                    leds[i] = CRGB_BLACK();
+                    GET_LED(i) = CRGB_BLACK();
                 }
                 for (i = mididx1 - step, j = 0; i >= 0 && j < s; i--, j++)
                 {
-                    leds[i] = CRGB_WHITE(0xFF);
+                    GET_LED(i) = CRGB_WHITE(0xFF);
                     did = true;
                 }
                 for (i = mididx2 + step, j = 0; i < LED_STRIP_SIZE && j < s; i++, j++)
                 {
-                    leds[i] = CRGB_WHITE(0xFF);
+                    GET_LED(i) = CRGB_WHITE(0xFF);
                     did = true;
                 }
                 if (did == false)
@@ -335,7 +341,7 @@ void stripe_animate_step()
                 int i;
                 for (i = 0; i < LED_STRIP_SIZE; i++)
                 {
-                    leds[i] = CRGB_BLUE(((i % SPEED_TICK_SPACING) == 0) ? b : b2);
+                    GET_LED(i) = CRGB_BLUE(((i % SPEED_TICK_SPACING) == 0) ? b : b2);
                 }
                 if (b >= hud_settings.ledbrite_tick)
                 {
@@ -358,7 +364,7 @@ void stripe_animate_step()
                 int i;
                 for (i = 0; i < LED_STRIP_SIZE; i++)
                 {
-                    leds[i] = CRGB_BLUE(((i % SPEED_TICK_SPACING) == 0) ? b : 0);
+                    GET_LED(i) = CRGB_BLUE(((i % SPEED_TICK_SPACING) == 0) ? b : 0);
                 }
                 if (b <= 0)
                 {
@@ -376,38 +382,41 @@ void stripe_animate_step()
         case HUDANI_FADEIN_FADESCROLL_OUTSIDEIN:
             {
                 strip_aniFadeInReport();
-                hud_aniDelay = 50;
+                if (hud_aniStep == 0) {
+                    strip_blank();
+                }
+                hud_aniDelay = 25;
                 need_show = true;
                 int fully_lit = hud_aniStep / 256;
                 int last_brightness = hud_aniStep % 256;
-                int briten_speed = 8;
+                int briten_speed = 32;
                 int i, j, k1, k2;
                 for (i = 0, j = 0;
-                    ((hud_animation == HUDANI_FADEIN_FADESCROLL && i < LED_STRIP_SIZE) || (hud_animation != HUDANI_FADEIN_FADESCROLL && i < ((LED_STRIP_SIZE + 1) / 2)))
+                    ((hud_animation == HUDANI_FADEIN_FADESCROLL && i < LED_STRIP_SIZE) || (hud_animation != HUDANI_FADEIN_FADESCROLL && i <= ((LED_STRIP_SIZE) / 2)))
                     && j < fully_lit;
                     i += SPEED_TICK_SPACING, j++)
                 {
                     if (hud_animation == HUDANI_FADEIN_FADESCROLL) {
-                        leds[i] = CRGB_BLUE(hud_settings.ledbrite_tick);
+                        GET_LED(i) = CRGB_BLUE(hud_settings.ledbrite_tick);
                     }
                     else {
-                        k1 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE + 1) / 2) - i);
-                        k2 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE + 1) / 2) + i);
-                        leds[k1] = CRGB_BLUE(hud_settings.ledbrite_tick);
-                        leds[k2] = CRGB_BLUE(hud_settings.ledbrite_tick);
+                        k1 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE) / 2) - i);
+                        k2 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE) / 2) + i);
+                        GET_LED(k1) = CRGB_BLUE(hud_settings.ledbrite_tick);
+                        GET_LED(k2) = CRGB_BLUE(hud_settings.ledbrite_tick);
                     }
                 }
                 if (hud_animation == HUDANI_FADEIN_FADESCROLL && i < LED_STRIP_SIZE)
                 {
-                    leds[i] = CRGB_BLUE(last_brightness);
+                    GET_LED(i) = CRGB_BLUE(last_brightness);
                     hud_aniStep += briten_speed;
                 }
-                else if (hud_animation != HUDANI_FADEIN_FADESCROLL && i < ((LED_STRIP_SIZE + 1) / 2))
+                else if (hud_animation != HUDANI_FADEIN_FADESCROLL && i <= ((LED_STRIP_SIZE) / 2))
                 {
-                    k1 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE + 1) / 2) - i);
-                    k2 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE + 1) / 2) + i);
-                    leds[k1] = CRGB_BLUE(last_brightness);
-                    leds[k2] = CRGB_BLUE(last_brightness);
+                    k1 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE) / 2) - i);
+                    k2 = (hud_animation == HUDANI_FADEIN_FADESCROLL_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE) / 2) + i);
+                    GET_LED(k1) = CRGB_BLUE(last_brightness);
+                    GET_LED(k2) = CRGB_BLUE(last_brightness);
                     hud_aniStep += briten_speed;
                 }
                 else
@@ -422,7 +431,7 @@ void stripe_animate_step()
         case HUDANI_FADEOUT_SEQ_INSIDEOUT:
             {
                 strip_aniFadeOutReport();
-                hud_aniDelay = 50;
+                hud_aniDelay = 25;
                 need_show = true;
                 int fully_dim = hud_aniStep / 256;
                 int last_brightness = 255 - (hud_aniStep % 256);
@@ -431,31 +440,32 @@ void stripe_animate_step()
                     strip_speedometer(0); // ensure blank bar but fully lit ticks
                 }
                 for (i = LED_STRIP_SIZE - 1, j = 0;
-                    ((hud_animation == HUDANI_FADEOUT_SEQ && i >= 0) || (hud_animation != HUDANI_FADEOUT_SEQ && i >= ((LED_STRIP_SIZE + 1) / 2)))
+                    ((hud_animation == HUDANI_FADEOUT_SEQ && i >= 0) || (hud_animation != HUDANI_FADEOUT_SEQ && i >= ((LED_STRIP_SIZE) / 2)))
                     && j < fully_dim;
                     i -= SPEED_TICK_SPACING, j++)
                 {
                     if (hud_animation == HUDANI_FADEOUT_SEQ) {
-                        leds[i] = CRGB_BLUE(0);
+                        GET_LED(i) = CRGB_BLUE(0);
                     }
                     else {
-                        k1 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE + 1) / 2) - i);
-                        k2 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE + 1) / 2) + i);
-                        leds[k1] = CRGB_BLUE(0);
-                        leds[k2] = CRGB_BLUE(0);
+                        k1 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (i                     ) : (i - (LED_STRIP_SIZE / 2));
+                        k2 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (LED_STRIP_SIZE - k1 - 1);
+                        GET_LED(k1) = CRGB_BLUE(0);
+                        GET_LED(k2) = CRGB_BLUE(0);
                     }
                 }
                 if (hud_animation == HUDANI_FADEOUT_SEQ && i >= 0)
                 {
-                    leds[i] = CRGB_BLUE(last_brightness);
-                    hud_aniStep += 8;
+                    GET_LED(i) = CRGB_BLUE(last_brightness);
+                    hud_aniStep += 16;
                 }
-                else if (hud_animation != HUDANI_FADEOUT_SEQ && i >= ((LED_STRIP_SIZE + 1) / 2))
+                else if (hud_animation != HUDANI_FADEOUT_SEQ && i >= ((LED_STRIP_SIZE) / 2))
                 {
-                    k1 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (i                     ) : (((LED_STRIP_SIZE + 1) / 2) - i);
-                    k2 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (((LED_STRIP_SIZE + 1) / 2) + i);
-                    leds[k1] = CRGB_BLUE(last_brightness);
-                    leds[k2] = CRGB_BLUE(last_brightness);
+                    k1 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (i                     ) : (i - (LED_STRIP_SIZE / 2));
+                    k2 = (hud_animation == HUDANI_FADEOUT_SEQ_OUTSIDEIN) ? (LED_STRIP_SIZE - i - 1) : (LED_STRIP_SIZE - k1 - 1);
+                    GET_LED(k1) = CRGB_BLUE(last_brightness);
+                    GET_LED(k2) = CRGB_BLUE(last_brightness);
+                    hud_aniStep += 16;
                 }
                 else
                 {
@@ -476,15 +486,16 @@ void stripe_animate_step()
                 volatile int brite = hud_settings.ledbrite_tick;
                 if (hud_animation == HUDANI_FADEIN_SCROLLFADE || hud_animation == HUDANI_FADEIN_SCROLL_OUTSIDEIN_FADE) {
                     brite *= hud_aniStep;
-                    brite /= LED_STRIP_SIZE * (hud_animation >= HUDANI_FADEIN_SCROLL_OUTSIDEIN ? 2 : 1);
+                    brite += hud_aniStep / 2;
+                    brite /= LED_STRIP_SIZE / (hud_animation >= HUDANI_FADEIN_SCROLL_OUTSIDEIN ? 2 : 1);
                     brite = brite > hud_settings.ledbrite_tick ? hud_settings.ledbrite_tick : brite;
                 }
                 strip_blank();
                 for (i = hud_aniStep; i >= 0; i -= SPEED_TICK_SPACING)
                 {
-                    leds[i] = CRGB_BLUE(brite);
+                    GET_LED(i) = CRGB_BLUE(brite);
                     if (hud_animation >= HUDANI_FADEIN_SCROLL_OUTSIDEIN) {
-                        leds[LED_STRIP_SIZE - i - 1] = CRGB_BLUE(brite);
+                        GET_LED(LED_STRIP_SIZE - i - 1) = CRGB_BLUE(brite);
                     }
                 }
                 hud_aniStep += 1;
@@ -503,11 +514,12 @@ void stripe_animate_step()
                 strip_aniFadeOutReport();
                 hud_aniDelay = 2000 / LED_STRIP_SIZE;
                 need_show = true;
-                int i, j;
+                int i = LED_STRIP_SIZE - 1;;
                 volatile int brite = hud_settings.ledbrite_tick;
                 if (hud_animation == HUDANI_FADEOUT_SCROLLFADE || hud_animation == HUDANI_FADEOUT_SCROLL_INSIDEOUT_FADE) {
                     brite *= hud_aniStep;
-                    brite /= LED_STRIP_SIZE * (hud_animation >= HUDANI_FADEOUT_SCROLL_INSIDEOUT ? 2 : 1);
+                    brite += hud_aniStep / 2;
+                    brite /= LED_STRIP_SIZE / (hud_animation >= HUDANI_FADEOUT_SCROLL_INSIDEOUT ? 2 : 1);
                     brite = hud_settings.ledbrite_tick - brite;
                 }
                 brite = brite < 0 ? 0 : brite;
@@ -518,15 +530,16 @@ void stripe_animate_step()
                 else if (hud_animation >= HUDANI_FADEOUT_SCROLL_INSIDEOUT) {
                     i = (LED_STRIP_SIZE + 1) / 2;
                 }
-                for (i -= hud_aniStep; i >= 0; i -= SPEED_TICK_SPACING)
+                i -= hud_aniStep;
+                for (; i >= 0; i -= SPEED_TICK_SPACING)
                 {
-                    leds[i] = CRGB_BLUE(brite);
+                    GET_LED(i) = CRGB_BLUE(brite);
                     if (hud_animation >= HUDANI_FADEOUT_SCROLL_INSIDEOUT) {
-                        leds[LED_STRIP_SIZE - i - 1] = CRGB_BLUE(brite);
+                        GET_LED(LED_STRIP_SIZE - i - 1) = CRGB_BLUE(brite);
                     }
                 }
                 hud_aniStep += 1;
-                if (i < 0)
+                if (strip_isBlank() != false)
                 {
                     dbg_ser.printf("[%u]: ANI fade-out %d done\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_FADEOUT_END;
@@ -556,13 +569,13 @@ void stripe_animate_step()
                     rnd_cnt = 1;
                 }
                 int i = rnd_pick * SPEED_TICK_SPACING;
-                int16_t old_b = leds[i].b;
+                int16_t old_b = GET_LED(i).b;
                 if ((hud_animation == HUDANI_FADEIN_RANDOM && old_b < 255) || (hud_animation == HUDANI_FADEOUT_RANDOM && old_b > 0))
                 {
-                    int16_t new_b = old_b + (8 * (hud_animation == HUDANI_FADEIN_RANDOM ? 1 : -1));
+                    int16_t new_b = old_b + (32 * (hud_animation == HUDANI_FADEIN_RANDOM ? 1 : -1));
                     new_b = new_b > 255 ? 255 : new_b;
                     new_b = new_b < 0 ? 0 : new_b;
-                    leds[i] = CRGB_BLUE(new_b);
+                    GET_LED(i) = CRGB_BLUE(new_b);
                     did = true;
                     if ((hud_animation == HUDANI_FADEIN_RANDOM && new_b >= 255) || (hud_animation == HUDANI_FADEOUT_RANDOM && new_b <= 0))
                     {
@@ -572,7 +585,7 @@ void stripe_animate_step()
                             {
                                 rnd_pick = rand() % 9;
                                 i = rnd_pick * SPEED_TICK_SPACING;
-                                if ((hud_animation == HUDANI_FADEIN_RANDOM && leds[i].b <= 0) || (hud_animation == HUDANI_FADEOUT_RANDOM && leds[i].b > 0))
+                                if ((hud_animation == HUDANI_FADEIN_RANDOM && GET_LED(i).b <= 0) || (hud_animation == HUDANI_FADEOUT_RANDOM && GET_LED(i).b > 0))
                                 {
                                     rnd_cnt++;
                                     break;
@@ -589,7 +602,7 @@ void stripe_animate_step()
                 hud_aniStep += 1;
                 if (did)
                 {
-                    hud_aniDelay = 50;
+                    hud_aniDelay = 25;
                     need_show = true;
                 }
             }
@@ -598,6 +611,9 @@ void stripe_animate_step()
         case HUDANI_FADEIN_FUZZ_2:
             {
                 strip_aniFadeInReport();
+                if (hud_aniStep == 0) {
+                    strip_blank();
+                }
                 if (strip_hasAllTicks()) {
                     dbg_ser.printf("[%u]: ANI fade-in %d done -> speedometer\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_SPEEDOMETER;
@@ -609,14 +625,15 @@ void stripe_animate_step()
                 while (did == false)
                 {
                     i = (rand() % 9) * SPEED_TICK_SPACING;
-                    int bi = (rand() % 32) - 8;
-                    if (leds[i].b < 255)
+                    int bi = (rand() % 32) + (16 * 2);
+                    bi *= ((rand() % 10) >= 7) ? -1 : 1;
+                    if (GET_LED(i).b < hud_settings.ledbrite_tick)
                     {
-                        int16_t old_b = leds[i].b;
+                        int16_t old_b = GET_LED(i).b;
                         int16_t new_b = old_b + bi;
                         new_b = new_b > hud_settings.ledbrite_tick ? hud_settings.ledbrite_tick : new_b;
                         new_b = new_b < (hud_settings.ledbrite_tick / 8) ? (hud_settings.ledbrite_tick / 8) : new_b;
-                        leds[i] = CRGB_BLUE(new_b);
+                        GET_LED(i) = CRGB_BLUE(new_b);
                         did = true;
                         break;
                     }
@@ -624,7 +641,7 @@ void stripe_animate_step()
                 hud_aniStep += 1;
                 if (did)
                 {
-                    hud_aniDelay = 50;
+                    hud_aniDelay = 20;
                     need_show = true;
                 }
             }
@@ -633,45 +650,48 @@ void stripe_animate_step()
         case HUDANI_FADEIN_STATIC_2:
             {
                 strip_aniFadeInReport();
-                if (strip_isAllTicks()) {
+                static uint32_t start_time;
+                static int16_t rnd_pick;
+                bool did = false;
+                if (hud_aniStep == 0) {
+                    strip_blank();
+                    rnd_pick = -1;
+                    start_time = millis();
+                    hud_aniStep = 1;
+                }
+                else if (strip_isAllTicks()) {
                     dbg_ser.printf("[%u]: ANI fade-in %d done -> speedometer\r\n", millis(), hud_animation);
                     hud_animation = HUDANI_SPEEDOMETER;
                     hud_aniStep = 0;
                     break;
                 }
-                static uint32_t start_time;
-                static int16_t rnd_pick;
-                static bool need_fast;
-                bool did = false;
-                if (hud_aniStep == 0) {
-                    need_fast = false;
-                    rnd_pick = -1;
-                    start_time = millis();
-                    hud_aniStep = 1;
-                }
-
-                need_fast |= ((start_time - millis()) > 1500) || car_data.rpm > 0;
 
                 if (rnd_pick < 0)
                 {
                     int r;
                     while (did == false)
                     {
-                        r = rand() % LED_STRIP_SIZE;
-                        if (leds[r].b <= 0)
+                        r = rand() % 10; // bias towards picking a tick
+                        if (r <= 10 - ((millis() - start_time) / (car_data.rpm > 0 ? 200 : 1000))) {
+                            r = rand() % LED_STRIP_SIZE;
+                        }
+                        else {
+                            r = (rand() % 9) * SPEED_TICK_SPACING;
+                        }
+                        if (GET_LED(r).b <= 0)
                         {
                             did = true;
                             if ((r % SPEED_TICK_SPACING) == 0)
                             {
-                                leds[r] = CRGB_BLUE(hud_settings.ledbrite_tick);
-                                hud_aniDelay = 150 + (rand() % 100);
+                                GET_LED(r) = CRGB_BLUE(hud_settings.ledbrite_tick);
+                                hud_aniDelay = 150 + (rand() % 50);
                             }
                             else
                             {
                                 rnd_pick = r;
                                 int b = hud_settings.ledbrite_tick * 3 / 4;
-                                leds[r] = CRGB_BLUE(b);
-                                hud_aniDelay = need_fast ? 25 : 50;
+                                GET_LED(r) = CRGB_BLUE(b);
+                                hud_aniDelay = 20;
                             }
                             break;
                         }
@@ -679,31 +699,18 @@ void stripe_animate_step()
                 }
                 else
                 {
-                    int16_t old_b = leds[rnd_pick].b;
+                    int16_t old_b = GET_LED(rnd_pick).b;
                     int16_t new_b = old_b - 32;
                     new_b = new_b < 0 ? 0 : new_b;
-                    leds[rnd_pick] = CRGB_BLUE(new_b);
+                    GET_LED(rnd_pick) = CRGB_BLUE(new_b);
                     if (new_b <= 0)
                     {
                         rnd_pick = -1;
                     }
                     did = true;
-                    hud_aniDelay = need_fast ? 25 : 50;
+                    hud_aniDelay = 20;
                 }
 
-                if (need_fast != false)
-                {
-                    did = true;
-                    int i;
-                    for (i = 0; i < LED_STRIP_SIZE; i += SPEED_TICK_SPACING)
-                    {
-                        int16_t old_b = leds[i].b;
-                        int16_t new_b = old_b + 4;
-                        new_b = new_b > 255 ? 255 : new_b;
-                        leds[i] = CRGB_BLUE(new_b);
-                    }
-                    hud_aniDelay = 25;
-                }
                 if (did)
                 {
                     need_show = true;
@@ -712,11 +719,20 @@ void stripe_animate_step()
             break;
         case HUDANI_VOLTMETER_FADEIN:
             {
+                if (hud_aniStep == 0 && (obd_isResponding == false || car_data.aux_batt_volt_x10 <= 0))
+                {
+                    hud_animation = hud_animation_queue;
+                    dbg_ser.printf("[%u]: ANI voltmeter unavailable -> %u\r\n", millis(), hud_animation);
+                    hud_animation_queue = HUDANI_OFF;
+                    hud_aniStep = 0;
+                    break;
+                }
+
                 strip_aniFadeInReport();
                 int b = hud_aniStep * 2;
                 b = b > hud_settings.ledbrite_volt ? hud_settings.ledbrite_volt : b;
                 float v = car_data.aux_batt_volt_x10;
-                v = mapf(b, 0, hud_settings.ledbrite_volt, 11.5, v / 10.0);
+                v = mapf(b, 0, hud_settings.ledbrite_volt, 11.3, v / 10.0);
                 strip_voltmeter(v, b);
                 need_show = true;
                 hud_aniStep++;
@@ -731,7 +747,7 @@ void stripe_animate_step()
         case HUDANI_VOLTMETER:
             {
                 float v = car_data.aux_batt_volt_x10;
-                strip_voltmeter(v / 10, hud_settings.ledbrite_volt);
+                strip_voltmeter(v / 10.0, hud_settings.ledbrite_volt);
                 need_show = true;
                 hud_aniDelay = 200;
                 hud_aniStep++;
@@ -775,9 +791,8 @@ void stripe_animate_step()
 void strip_debug()
 {
     int i;
-    Serial.println();
     Serial.print("LEDS: ");
-    for (i = 0; i < LED_STRIP_SIZE; i++)
+    for (i = 0; i < LED_STRIP_SIZE_VIRTUAL; i++)
     {
         uint8_t maxb = 0;
         maxb = leds[i].r > maxb ? leds[i].r : maxb;

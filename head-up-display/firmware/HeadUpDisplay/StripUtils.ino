@@ -3,7 +3,7 @@
 void strip_blank()
 {
     int i;
-    for (i = 0; i < LED_STRIP_SIZE; i++) {
+    for (i = 0; i < LED_STRIP_SIZE_VIRTUAL; i++) {
         leds[i] = CRGB_BLACK();
     }
 }
@@ -12,7 +12,7 @@ bool strip_hasAnyTicks()
 {
     int i;
     for (i = 0; i < LED_STRIP_SIZE; i += SPEED_TICK_SPACING) {
-        if (leds[i].r > 0 || leds[i].g > 0 || leds[i].b > 0) {
+        if (GET_LED(i).r > 0 || GET_LED(i).g > 0 || GET_LED(i).b > 0) {
             return false;
         }
     }
@@ -23,7 +23,7 @@ bool strip_isBlank()
 {
     int i;
     for (i = 0; i < LED_STRIP_SIZE; i += 1) {
-        if (leds[i].r > 0 || leds[i].g > 0 || leds[i].b > 0) {
+        if (GET_LED(i).r > 0 || GET_LED(i).g > 0 || GET_LED(i).b > 0) {
             return false;
         }
     }
@@ -34,7 +34,7 @@ bool strip_hasAllTicks()
 {
     int i;
     for (i = 0; i < LED_STRIP_SIZE; i += SPEED_TICK_SPACING) {
-        if (leds[i].b < hud_settings.ledbrite_tick) {
+        if (GET_LED(i).b < hud_settings.ledbrite_tick) {
             return false;
         }
     }
@@ -48,13 +48,13 @@ bool strip_isAllTicks()
     {
         if ((i % SPEED_TICK_SPACING) == 0)
         {
-            if (leds[i].b < hud_settings.ledbrite_tick) {
+            if (GET_LED(i).b < hud_settings.ledbrite_tick) {
                 return false;
             }
         }
         else
         {
-            if (leds[i].b > 0) {
+            if (GET_LED(i).b > 0) {
                 return false;
             }
         }
