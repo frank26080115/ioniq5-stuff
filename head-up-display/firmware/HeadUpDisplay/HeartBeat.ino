@@ -18,6 +18,7 @@ void heartbeat_init()
 void heartbeat_task(uint32_t now)
 {
     static uint8_t tick = 0;
+    static bool file_was_ready = false;
     uint32_t now_mod = now % 1000;
     if (now_mod < 200)
     {
@@ -29,27 +30,27 @@ void heartbeat_task(uint32_t now)
             {
                 if (battlog_fileReady != false) {
                     heartbeat_strip[0] = CRGB::Purple;
+                    file_was_ready |= true;
                 }
                 else {
                     heartbeat_strip[0] = CRGB::Red;
                 }
             }
-            else if (car_data.ignition == false)
+            else
             {
-                if (battlog_fileReady != false) {
-                    heartbeat_strip[0] = CRGB::Green;
+                if ((tick % 2) == 0)
+                {
+                    if (battlog_fileReady != false) {
+                        heartbeat_strip[0] = CRGB::Green;
+                        file_was_ready |= true;
+                    }
+                    else if (file_was_ready != false) {
+                        heartbeat_strip[0] = CRGB::Purple;
+                    }
                 }
-                else {
-                    heartbeat_strip[0] = CRGB::Blue;
-                }
-            }
-            else if (car_data.ignition != false)
-            {
-                if (battlog_fileReady != false && (tick % 2) == 0) {
-                    heartbeat_strip[0] = CRGB::Green;
-                }
-                else {
-                    heartbeat_strip[0] = CRGB::White;
+                else
+                {
+                    heartbeat_strip[0] = car_data.ignition != false ? CRGB::White : CRGB::Blue;
                 }
             }
             heartbeat_ctrler->showLeds(brite);

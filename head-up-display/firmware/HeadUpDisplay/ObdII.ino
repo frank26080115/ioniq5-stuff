@@ -11,6 +11,7 @@ bool     obd_debug_dump = false;
 uint32_t obd_debug_rate = 1;
 bool     obd_hasNewLog = false;
 bool     obd_hasNewSpeed = false;
+bool     obd_gotNewSpeed = false;
 bool     obd_isResponding = false;
 
 int32_t obdstat_rxCnt = 0;
@@ -129,6 +130,8 @@ void obd_queryTask(uint32_t tnow)
 
 bool obd_parse(uint8_t* data, uint16_t datalen)
 {
+    uint32_t now = millis();
+
     if (obd_debug_dump != false)
     {
         dbg_ser.printf("CAN RX[t=%u]: ", millis());
@@ -194,9 +197,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
 
         if (obd_database[pid8] != NULL)
         {
-            obd_lastRespTime = millis();
-            //obd_firstTimeMs = (obd_firstTimeMs == 0) ? millis() : obd_firstTimeMs;
-            //obd_firstTimeUs = (obd_firstTimeUs == 0) ? micros() : obd_firstTimeUs;
+            obd_lastRespTime = now;
             obd_isResponding = true;
             obdstat_rxCnt++;
             *ptr16 = datalen;
@@ -210,18 +211,25 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
                     if (hud_settings.speed_multiplier == 0 || speedcalib_active) {
                         obd_parseVehicleDataSpeedCalibration();
                     }
-                    spdpredict_submit(car_data.rpm, millis());
+                    spdpredict_submit(car_data.rpm, now);
                     break;
                 case (OBD_PID_THROTTLE & 0x0F) | 0x10:
                     obd_parseVehicleDataThrottle();
                     break;
-                case (OBD_PID_MAINPACKET & 0x0F):
-                    obd_hasNewSpeed = true;
+                case (OBD_PID_MAINPACKET & 0x1F):
+                    obd_hasNewSpeed = true; // indicate to user app
+                    obd_gotNewSpeed = true; // indicate to this module
                     obd_parseVehicleDataBasic();
-                    spdpredict_submit(car_data.rpm, millis());
+                    spdpredict_submit(car_data.rpm, now);
                     break;
-                case (OBD_PID_REALSPEED & 0x0F):
+                case (OBD_PID_REALSPEED & 0x1F):
                     obd_hasNewLog = true;
+                    if (obd_gotNewSpeed == false)
+                    {
+                        obd_parseVehicleDataBasic();
+                        spdpredict_submit(car_data.rpm, now);
+                    }
+                    obd_gotNewSpeed = false;
                     if (hud_settings.speed_multiplier == 0 || speedcalib_active) {
                         obd_parseVehicleDataSpeedCalibration();
                     }

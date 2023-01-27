@@ -127,6 +127,7 @@ void battlog_close()
     }
     battlog_filePtr.close();
     battlog_fileReady = false;
+    battlog_filename[0] = 0;
     Serial.println("Closed logging file");
 }
 
@@ -154,17 +155,23 @@ void battlog_log()
 
     int i;
     uint8_t* s = (uint8_t*)log_cacher.c_str();
-    Serial.print((const char*)s);
+    dbg_ser.print("LOG: ");
+    dbg_ser.print((const char*)s);
     for (i = 0; ; i++)
     {
         uint8_t x = s[i];
         if (x == 0) {
             break;
         }
+        volatile uint32_t start_time = millis(); // getWriteError is not working so we are catching any timeouts manually
+        // we have to check timeout for each character or else the system will timeout multiple times, resulting in like 10 seconds of unresponsiveness
         battlog_filePtr.write(x);
-        if (battlog_filePtr.getWriteError() != 0) {
+        volatile uint32_t end_time = millis();
+        #ifndef FORCE_CARD_GOOD
+        if (battlog_filePtr.getWriteError() != 0 || (end_time - start_time) >= BATTLOG_WRITE_TIMEOUT) {
             break;
         }
+        #endif
     }
 }
 
@@ -214,7 +221,7 @@ void battlog_task(uint32_t now)
 
         battlog_log();
 
-        if ((now - last_flush_time) >= 5000 && battlog_filePtr.getWriteError() == 0)
+        if ((now - last_flush_time) >= BATTLOG_SYNC_INTERVAL && battlog_filePtr.getWriteError() == 0 && (millis() - start_time) < BATTLOG_WRITE_TIMEOUT)
         {
             battlog_filePtr.flush();
             last_flush_time = now;
@@ -223,16 +230,22 @@ void battlog_task(uint32_t now)
         volatile uint32_t end_time = millis(); // for time measurement, checks for card timeout event, getWriteError on the file pointer does not work
 
         volatile uint32_t dtime = end_time - start_time;
-        if (dtime >= 200 || battlog_filePtr.getWriteError() != 0) // checks for card timeout event, getWriteError on the file pointer does not always work
+        if (dtime >= BATTLOG_WRITE_TIMEOUT || battlog_filePtr.getWriteError() != 0) // checks for card timeout event, getWriteError on the file pointer does not always work
         {
             battlog_writeErrCnt++;
-            battlog_filePtr.clearWriteError();
-            if ((car_data.ignition == false && battlog_writeErrCnt > 1) || (car_data.ignition != false && battlog_writeErrCnt >= 1)) {
+            if ((car_data.ignition == false && battlog_writeErrCnt > BATTLOG_WRITE_ERR_MAX) || (car_data.ignition != false && battlog_writeErrCnt >= BATTLOG_WRITE_ERR_MAX)) {
+                #ifndef FORCE_CARD_GOOD
                 battlog_fileReady = false;
                 battlog_cardReady = false;
+                battlog_filename[0] = 0;
                 battlog_needReinit |= true;
-                Serial.printf("[%u]: SD write error\r\n", millis());
+                #endif
+                Serial.printf("[%u]: SD write error (%d, %d)\r\n", millis(), battlog_filePtr.getWriteError(), dtime);
+                #ifndef FORCE_CARD_GOOD
+                SD.end();
+                #endif
             }
+            battlog_filePtr.clearWriteError();
         }
         else
         {

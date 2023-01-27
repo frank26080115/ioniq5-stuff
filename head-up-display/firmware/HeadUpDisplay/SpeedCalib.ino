@@ -49,7 +49,7 @@ void speedcalib_task(uint32_t now)
             hud_settings.speed_calib_kmh = saved_kmh;
             save_timer = 0;
             settings_save();
-            Serial.printf("[%u]: Speed Calib Save: %0.2f , %u , %u , %0.1f\r\n", now, hud_settings.speed_multiplier, saved_rpm, saved_kmh, speedcalib_validate(saved_rpm, saved_kmh));
+            dbg_ser.printf("[%u]: Speed Calib Save: %0.2f , %u , %u , %0.1f\r\n", now, hud_settings.speed_multiplier, saved_rpm, saved_kmh, speedcalib_validate(saved_rpm, saved_kmh));
         }
     }
     else if (kmh_max == 0)

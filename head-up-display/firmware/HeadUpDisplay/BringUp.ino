@@ -5,7 +5,7 @@ extern uint32_t obd_debug_rate;
 extern uint8_t obd_poll_mode;
 extern bool obd_hasNewLog;
 extern bool obd_hasNewSpeed;
-
+extern bool obd_isResponding;
 extern bool speedcalib_log;
 extern bool speedcalib_active;
 
@@ -16,8 +16,8 @@ void bringup_tests()
     //bringuptest_canbusquery();
     //bringuptest_canbusspy();
     //bringuptest_canbusspeed();
-    //bringuptest_speedcalibration();
-    bringuptest_stripAnimation();
+    bringuptest_speedcalibration();
+    //bringuptest_stripAnimation();
 }
 
 void bringuptest_sdcard()
@@ -122,6 +122,7 @@ void bringuptest_stripAnimation()
 void bringuptest_speedcalibration()
 {
     static uint32_t last_time = 0;
+    static bool start_logging = false;
     uint32_t now;
     dbg_ser.enabled = true;
     heartbeat_init();
@@ -136,8 +137,19 @@ void bringuptest_speedcalibration()
         canbus_poll();
         obd_queryTask(now = millis());
         speedcalib_task(now);
-        car_data.speed_mph = speedcalib_convert(car_data.speed_rpm);
+        car_data.speed_mph = speedcalib_convert(car_data.rpm);
+        #if 0
+        if (obd_isResponding != false && start_logging == false) {
+            battlog_startNewLog();
+            start_logging = true;
+        }
+        if (start_logging != false)
+        {
+            battlog_task(now);
+        }
+        #else
         battlog_task(now);
+        #endif
         heartbeat_task(now);
         obdstat_reportTask(now);
         esp_task_wdt_reset();
