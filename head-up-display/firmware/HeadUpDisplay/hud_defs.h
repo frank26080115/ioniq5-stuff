@@ -6,7 +6,7 @@
 
 #include "hud_config.h"
 
-#define SETTINGS_MAGIC 0xDEAD1234
+#define SETTINGS_MAGIC 0xBEEF4321
 
 enum
 {
@@ -83,7 +83,8 @@ enum
 
 #define OBD_PACKET_START (2 + 3)
 
-#define RPM2MPH_E6    12000 // 12000 is calculated with a 4.71 gear ratio
+//#define RPM2MPH_E6    12000 // 12000 is calculated with a 4.71 gear ratio
+#define RPM2MPH_E6     7851 // calculated from the log
 #define KMH2MPH_E6   621371
 #define KMH2MPH_DIV 1000000
 

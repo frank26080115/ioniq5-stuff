@@ -25,7 +25,7 @@ void obd_queryTask(uint32_t tnow)
     static uint8_t tick = 0;
     static uint32_t item = 0;
 
-    uint32_t qrate = 40; // value of 51 here got about 10 updates per second, unable to push it any faster
+    uint32_t qrate = 51; // value of 51 here got about 10 updates per second, unable to push it any faster
     uint32_t qtimeout = 200;
 
     if (car_data.ignition == false)
@@ -134,7 +134,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
 
     if (obd_debug_dump != false)
     {
-        dbg_ser.printf("CAN RX[t=%u]: ", millis());
+        dbg_ser.printf("CAN RX[s=%u, t=%u]: ", datalen, millis());
         int di;
         for (di = 0; di < datalen; di++)
         {
@@ -348,23 +348,63 @@ void obd_parseVehicleDataBasic()
         return;
     }
 
+    static int8_t assume_ignition = 0;
+    static int32_t stop_time = -1;
+
     uint8_t* ptr = (uint8_t*)(&((obd_database[OBD_PID_MAINPACKET & 0xFF])[OBD_PACKET_START]));
 
     int16_t rpm1 = pktparse_sint16_be(ptr, 53);
     int16_t rpm2 = pktparse_sint16_be(ptr, 53 + 2);
-    rpm1 = rpm1 * (rpm1 < 0) ? -1 : 1;
-    rpm2 = rpm2 * (rpm2 < 0) ? -1 : 1;
+    rpm1 *= (rpm1 < 0) ? -1 : 1;
+    rpm2 *= (rpm2 < 0) ? -1 : 1;
 
     car_data.rpm = rpm1 >= rpm2 ? rpm1 : rpm2;
     if (car_data.rpm > car_data.rpm_max) {
         car_data.rpm_max = car_data.rpm;
     }
 
-    car_data.batt_current_x10 = pktparse_sint16_be(ptr, 'K' - 'A');
-    car_data.batt_voltage_x10 = pktparse_uint16_be(ptr, 'M' - 'A');
-    car_data.batt_power_x100 = car_data.batt_current_x10 * car_data.batt_voltage_x10;
+    if (car_data.rpm == 0 && stop_time < 0)
+    {
+        stop_time = millis();
+    }
+    else if (car_data.rpm != 0)
+    {
+        stop_time = -1;
+        car_data.idle_time_ms = 0;
+    }
+    else if (car_data.rpm == 0 && stop_time > 0)
+    {
+        car_data.idle_time_ms = millis() - stop_time;
+    }
 
-    car_data.ignition = ((ptr[50] & (1 << 2)) != 0) || car_data.rpm != 0;
+    car_data.batt_current_x10  = pktparse_sint16_be(ptr, 'K' - 'A');
+    car_data.batt_voltage_x10  = pktparse_uint16_be(ptr, 'M' - 'A');
+    car_data.batt_power_x100   = car_data.batt_current_x10 * car_data.batt_voltage_x10;
+    car_data.aux_batt_volt_x10 = ptr[29];
+
+    car_data.ignition = ((ptr[50] & (1 << 2)) != 0);
+                        // || ((ptr['J' - 'A'] & (1 << 0)) != 0);
+
+    if (car_data.ignition != false) {
+        assume_ignition = -1;
+    }
+
+    if (assume_ignition == 0 && car_data.ignition == false && car_data.rpm != 0)
+    {
+        assume_ignition = 1;
+        car_data.ignition = true;
+    }
+
+    if (assume_ignition == 1)
+    {
+        car_data.ignition = true;
+    }
+
+    if (car_data.rpm == 0 && car_data.idle_time_ms >= 1000 && (car_data.batt_current_x10 < 50 || car_data.charge_mode != 0))
+    {
+        assume_ignition = 0;
+        car_data.ignition = false;
+    }
 
     car_data.cellvolt_min_x50   = ptr['Z' - 'A'];
     car_data.cellvolt_max_x50   = ptr['X' - 'A'];
@@ -445,7 +485,7 @@ void obd_printLog(Print* p)
     tmp /= 1000.0;
     p->printf("%0.1f, ", tmp);
 
-    p->printf("%u, %0.1f, %d, ", car_data.rpm, car_data.speed_mph, car_data.speed_kmh);
+    p->printf("%d, %0.1f, %d, ", car_data.rpm, car_data.speed_mph, car_data.speed_kmh);
 
     if (speedcalib_log != false) {
         p->printf("%u, %u, %u, %u, ", hud_settings.speed_multiplier, hud_settings.speed_kmh_max, hud_settings.speed_calib_rpm, hud_settings.speed_calib_kmh);
@@ -517,6 +557,41 @@ void obd_printLog(Print* p)
     obd_printBattBankTemperatures(p);
 
     obdstat_logCnt++;
+}
+
+void obd_printDb(Print* p)
+{
+    float tmp;
+
+    if (p == NULL) {
+        return;
+    }
+
+    uint32_t now = millis();
+
+    int i;
+
+    time_print(p, now);
+    tmp = now;
+    tmp /= 1000.0;
+    p->printf("%0.1f, ", tmp);
+    p->printf(";;;;;");
+
+    for (i = 0; i < 32; i++)
+    {
+        if (obd_database[i] == NULL) {
+            continue;
+        }
+        int16_t* dblen_ptr = (int16_t*)(obd_database[i]);
+        int16_t dblen = *dblen_ptr;
+        p->printf("%u, %d, ", i, dblen);
+        int j;
+        for (j = 0; j < dblen; j++)
+        {
+            p->printf("0x%02X, ", obd_database[i][2 + j]);
+        }
+        p->printf(";;;;;");
+    }
 }
 
 void obdstat_reportTask(uint32_t now)

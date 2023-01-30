@@ -63,7 +63,7 @@ void settings_saveLater()
 
 void settings_saveTask(bool force)
 {
-    if (settings_saveLaterTime != 0 && ((millis() - settings_saveLaterTime) >= 5000 || force)) {
+    if (settings_saveLaterTime != 0 && ((millis() - settings_saveLaterTime) >= 1000 || force)) {
         settings_save();
         settings_saveLaterTime = 0;
     }

@@ -136,7 +136,9 @@ void battlog_log()
     if (battlog_fileReady == false) {
         return;
     }
+
     log_cacher.reset();
+
     Print* p1 = dynamic_cast<Print*>(&log_cacher);
     log_printer.destinations[LOGPRINTER_IDX_SDCARD] = p1;
     if (p1 == NULL) {
@@ -151,6 +153,7 @@ void battlog_log()
     }
 
     obd_printLog(p2);
+    //obd_printDb(p2);
     p2->printf("\r\n");
 
     int i;

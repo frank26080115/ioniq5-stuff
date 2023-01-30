@@ -47,6 +47,8 @@ typedef struct
 
     uint16_t inverter_capacitor_voltage;
     uint16_t isolation_resistance;
+
+    uint32_t idle_time_ms;
 }
 vehicle_data_t;
 

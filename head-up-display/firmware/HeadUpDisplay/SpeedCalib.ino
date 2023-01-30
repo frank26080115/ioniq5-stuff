@@ -6,6 +6,7 @@ bool speedcalib_log = false;
 float speedcalib_convert(float rpm)
 {
     rpm *= hud_settings.speed_multiplier;
+    rpm += hud_settings.speed_multiplier / 2; // round
     float frpm = rpm;
     return frpm / ((float)KMH2MPH_DIV);
 }
@@ -38,6 +39,9 @@ void speedcalib_task(uint32_t now)
     if (hud_settings.speed_multiplier == 0) {
         speedcalib_active |= true;
     }
+    else if (m_lpf < 0) {
+        m_lpf = hud_settings.speed_multiplier;
+    }
 
     if (save_timer != 0 && m_lpf > 0)
     {
@@ -48,7 +52,7 @@ void speedcalib_task(uint32_t now)
             hud_settings.speed_calib_rpm = saved_rpm;
             hud_settings.speed_calib_kmh = saved_kmh;
             save_timer = 0;
-            settings_save();
+            settings_saveLater();
             dbg_ser.printf("[%u]: Speed Calib Save: %0.2f , %u , %u , %0.1f\r\n", now, hud_settings.speed_multiplier, saved_rpm, saved_kmh, speedcalib_validate(saved_rpm, saved_kmh));
         }
     }
@@ -66,13 +70,12 @@ void speedcalib_task(uint32_t now)
     kmh_buf[idx] = car_data.speed_kmh;
     rpm_buf[idx] = car_data.rpm;
 
-    if (kmh_buf[0] == kmh_buf[1])
+    if (kmh_buf[0] == kmh_buf[1] && rpm_buf[0] == rpm_buf[1])
     {
-        uint8_t nidx = idx == 0 ? 1 : 0;
-        uint32_t kmh_used = kmh_buf[nidx];
-        uint32_t rpm_used = rpm_buf[nidx]; 
+        uint32_t kmh_used = kmh_buf[0];
+        uint32_t rpm_used = rpm_buf[0]; 
         uint32_t mph = kmh_used * KMH2MPH_E6;
-        uint32_t multiplier = rpm_used / mph;
+        uint32_t multiplier = mph / rpm_used;
         lpf_update(multiplier, &m_lpf, 10, 100);
         saved_kmh = kmh_used;
         saved_rpm = rpm_used;
