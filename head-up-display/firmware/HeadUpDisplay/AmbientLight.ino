@@ -3,7 +3,7 @@
 #define AMBLIGHT_LPF_FACTOR 20
 #define AMBLIGHT_LPF_DIV    1000
 
-bool amblight_dump = false;
+bool amblight_dump = true;
 uint32_t amblight_dump_time = 0;
 
 int32_t amblight_val_x1000 = -1;
@@ -13,8 +13,11 @@ int16_t amblight_firstRaw = -1;
 
 void amblight_init()
 {
+    int8_t channel = digitalPinToAnalogChannel(HUD_PIN_AMBLIGHT);
+
     adcAttachPin(HUD_PIN_AMBLIGHT);
     adcStart(HUD_PIN_AMBLIGHT);
+    Serial.printf("Amblight pin %u chan %d\r\n", HUD_PIN_AMBLIGHT, channel);
 }
 
 void amblight_task()
@@ -32,7 +35,7 @@ void amblight_task()
             uint32_t now;
             if (((now = millis()) - amblight_dump_time) >= 200)
             {
-                Serial.printf("amblight[%u]: %u , %u\r\n", now, amblight_val, amblight_get());
+                Serial.printf("amblight[%u]: %u , %u , %u\r\n", now, x, amblight_val, amblight_get());
             }
         }
     }
