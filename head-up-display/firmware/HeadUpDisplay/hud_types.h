@@ -10,6 +10,7 @@
 typedef struct
 {
     int16_t  rpm;
+    int16_t  rpm_guess;
     int16_t  rpm_max;
     int16_t  speed_kmh;
     int16_t  speed_kmh_max;
@@ -57,7 +58,7 @@ typedef struct
     uint32_t magic;
     uint32_t len;
 
-    uint32_t speed_multiplier; // actual variable used to calculate MPH from RPM, denominator is fixed
+    int32_t  speed_multiplier; // actual variable used to calculate MPH from RPM, denominator is fixed
     uint16_t speed_kmh_max;    // data used for calibration
     uint16_t speed_calib_rpm;  // data used for calibration
     uint16_t speed_calib_kmh;  // data used for calibration

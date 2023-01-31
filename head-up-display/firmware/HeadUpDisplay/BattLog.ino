@@ -153,7 +153,6 @@ void battlog_log()
     }
 
     obd_printLog(p2);
-    //obd_printDb(p2);
     p2->printf("\r\n");
 
     int i;
@@ -208,6 +207,10 @@ void battlog_task(uint32_t now)
     else if (car_data.charge_mode != 0) {
         tick_interval = 500;
     }
+
+    #ifdef ENABLE_TEST_PRINT_SPEED_FAST
+    tick_interval = 10;
+    #endif
 
     if ((now - last_log_time) >= tick_interval)
     {

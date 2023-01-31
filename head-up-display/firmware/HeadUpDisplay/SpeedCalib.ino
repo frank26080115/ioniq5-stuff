@@ -5,6 +5,9 @@ bool speedcalib_log = false;
 
 float speedcalib_convert(float rpm)
 {
+    #ifndef ENABLE_SPEED_CALIBRATION
+    hud_settings.speed_multiplier = RPM2MPH_E6;
+    #endif
     rpm *= hud_settings.speed_multiplier;
     rpm += hud_settings.speed_multiplier / 2; // round
     float frpm = rpm;
@@ -32,15 +35,20 @@ void speedcalib_task(uint32_t now)
 
     static uint32_t last_dbg_time = 0;
 
-    if (speedcalib_active == false && hud_settings.speed_multiplier != 0) {
+    if (speedcalib_active == false && hud_settings.speed_multiplier > 0) {
         return;
     }
 
-    if (hud_settings.speed_multiplier == 0) {
+    #ifndef ENABLE_SPEED_CALIBRATION
+    return;
+    #endif
+
+    if (hud_settings.speed_multiplier <= 0) {
         speedcalib_active |= true;
+        hud_settings.speed_multiplier = RPM2MPH_E6;
     }
-    else if (m_lpf < 0) {
-        m_lpf = hud_settings.speed_multiplier;
+    if (m_lpf < 0) {
+        m_lpf = hud_settings.speed_multiplier > 0 ? hud_settings.speed_multiplier : RPM2MPH_E6;
     }
 
     if (save_timer != 0 && m_lpf > 0)
@@ -53,7 +61,7 @@ void speedcalib_task(uint32_t now)
             hud_settings.speed_calib_kmh = saved_kmh;
             save_timer = 0;
             settings_saveLater();
-            dbg_ser.printf("[%u]: Speed Calib Save: %0.2f , %u , %u , %0.1f\r\n", now, hud_settings.speed_multiplier, saved_rpm, saved_kmh, speedcalib_validate(saved_rpm, saved_kmh));
+            dbg_ser.printf("[%u]: Speed Calib Save: %0.2f , %d , %u , %0.1f\r\n", now, hud_settings.speed_multiplier, saved_rpm, saved_kmh, speedcalib_validate(saved_rpm, saved_kmh));
         }
     }
     else if (kmh_max == 0)

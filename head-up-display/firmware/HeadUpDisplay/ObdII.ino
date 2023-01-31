@@ -51,11 +51,11 @@ void obd_queryTask(uint32_t tnow)
             //else 
             if (obd_poll_mode == OBDPOLLMODE_SIMPLE)
             {
-                if (hud_settings.speed_multiplier != 0 && speedcalib_active == false)
+                if (hud_settings.speed_multiplier > 0 && speedcalib_active == false)
                 {
                     canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
                 }
-                else // hud_settings.speed_multiplier == 0 || speedcalib_active != false
+                else // hud_settings.speed_multiplier <= 0 || speedcalib_active != false
                 {
                     uint32_t tick_mod = tick % 2; // 3;
                     if (tick_mod == 0) {
@@ -208,7 +208,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
                 case (OBD_PID_SIMPLESPEED & 0x0F) | 0x10:
                     obd_hasNewSpeed = true;
                     obd_parseVehicleDataSpeedOnly();
-                    if (hud_settings.speed_multiplier == 0 || speedcalib_active) {
+                    if (hud_settings.speed_multiplier <= 0 || speedcalib_active) {
                         obd_parseVehicleDataSpeedCalibration();
                     }
                     spdpredict_submit(car_data.rpm, now);
@@ -230,7 +230,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
                         spdpredict_submit(car_data.rpm, now);
                     }
                     obd_gotNewSpeed = false;
-                    if (hud_settings.speed_multiplier == 0 || speedcalib_active) {
+                    if (hud_settings.speed_multiplier <= 0 || speedcalib_active) {
                         obd_parseVehicleDataSpeedCalibration();
                     }
                     obd_parseVehicleDataBattery();
@@ -474,6 +474,10 @@ void obd_parseVehicleDataBattery()
 
 void obd_printLog(Print* p)
 {
+    #ifdef ENABLE_TEST_PRINT_DB
+    obd_printLog(p);
+    return;
+    #endif
     float tmp;
 
     if (p == NULL) {
@@ -484,8 +488,14 @@ void obd_printLog(Print* p)
     tmp = millis();
     tmp /= 1000.0;
     p->printf("%0.1f, ", tmp);
+    obdstat_logCnt++;
 
     p->printf("%d, %0.1f, %d, ", car_data.rpm, car_data.speed_mph, car_data.speed_kmh);
+
+    #ifdef ENABLE_TEST_PRINT_SPEED_FAST
+    p->printf("%d, ", car_data.rpm_guess);
+    return;
+    #endif
 
     if (speedcalib_log != false) {
         p->printf("%u, %u, %u, %u, ", hud_settings.speed_multiplier, hud_settings.speed_kmh_max, hud_settings.speed_calib_rpm, hud_settings.speed_calib_kmh);
@@ -555,8 +565,6 @@ void obd_printLog(Print* p)
 
     obd_printCellVoltages(p);
     obd_printBattBankTemperatures(p);
-
-    obdstat_logCnt++;
 }
 
 void obd_printDb(Print* p)

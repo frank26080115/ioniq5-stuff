@@ -8,16 +8,75 @@ extern bool obd_hasNewSpeed;
 extern bool obd_isResponding;
 extern bool speedcalib_log;
 extern bool speedcalib_active;
+extern int32_t amblight_val;
 
 void bringup_tests()
 {
+    //bringuptest_ambientlight();
+    //bringuptest_adc();
+    //bringuptest_time();
     //bringuptest_sdcard();
     //bringuptest_heartbeat();
     //bringuptest_canbusquery();
     //bringuptest_canbusspy();
     //bringuptest_canbusspeed();
-    bringuptest_speedcalibration();
+    bringuptest_speedlog();
     //bringuptest_stripAnimation();
+}
+
+void bringuptest_console()
+{
+    while (true)
+    {
+        cmdline.task();
+    }
+}
+
+void bringuptest_time()
+{
+    uint32_t last_time = 0;
+    while (true)
+    {
+        cmdline.task();
+        uint32_t now = millis();
+        if ((now - last_time) >= 1000)
+        {
+            last_time = now;
+            Serial.printf("%u, ", now);
+            time_print(&Serial, now);
+            Serial.println();
+        }
+    }
+}
+
+void bringuptest_ambientlight()
+{
+    uint32_t last_time = 0;
+    amblight_init();
+    while (true)
+    {
+        amblight_task();
+        uint32_t now = millis();
+        if ((now - last_time) >= 1000)
+        {
+            last_time = now;
+            //Serial.printf("%u, %d, %d\r\n", now, amblight_val, amblight_get());
+        }
+    }
+}
+
+void bringuptest_adc()
+{
+    uint32_t last_time = 0;
+    while (true)
+    {
+        uint32_t now = millis();
+        if ((now - last_time) >= 1000)
+        {
+            last_time = now;
+            Serial.printf("%u, %d, %d\r\n", now, analogRead(HUD_PIN_AMBLIGHT));
+        }
+    }
 }
 
 void bringuptest_sdcard()
@@ -157,3 +216,43 @@ void bringuptest_speedcalibration()
         vTaskDelay(5);
     }
 }
+
+void bringuptest_speedlog()
+{
+    static uint32_t last_time = 0;
+    static bool start_logging = false;
+    uint32_t now;
+    dbg_ser.enabled = true;
+    heartbeat_init();
+    canbus_init();
+    battlog_init();
+    battlog_startNewLog();
+    speedcalib_log = false;
+    speedcalib_active = false;
+    obd_poll_mode = OBDPOLLMODE_SIMPLE;
+    while (true)
+    {
+        canbus_poll();
+        obd_queryTask(now = millis());
+        speedcalib_task(now);
+        car_data.rpm_guess = spdpredict_get(millis());
+        car_data.speed_mph = speedcalib_convert(car_data.rpm_guess);
+        #if 0
+        if (obd_isResponding != false && start_logging == false) {
+            battlog_startNewLog();
+            start_logging = true;
+        }
+        if (start_logging != false)
+        {
+            battlog_task(now);
+        }
+        #else
+        battlog_task(now);
+        #endif
+        heartbeat_task(now);
+        obdstat_reportTask(now);
+        esp_task_wdt_reset();
+        vTaskDelay(5);
+    }
+}
+

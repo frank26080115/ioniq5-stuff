@@ -78,7 +78,7 @@ void loop2(void* pvParameters)
         state_machine(now);
 
         speedcalib_task(now);
-        car_data.speed_mph = speedcalib_convert(spdpredict_get(now = millis()));
+        car_data.speed_mph = speedcalib_convert(car_data.rpm_guess = spdpredict_get(now = millis()));
 
         hud_aniDelay = 0;
         strip_task(now);

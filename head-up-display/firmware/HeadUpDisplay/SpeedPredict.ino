@@ -17,6 +17,11 @@ void spdpredict_submit(float spd, uint32_t t)
 
 float spdpredict_get(uint32_t t)
 {
+    #ifdef ENABLE_TEST_PRINT_SPEED_FAST
+    hud_settings.spdpredict_slew = 10000;
+    hud_settings.spdpredict_factor = 1.0;
+    #endif
+
     float spd_latest = spdprecict_buff_speed[2];
     float spd_max = spd_latest + hud_settings.spdpredict_slew;
     float spd_min = spd_latest - hud_settings.spdpredict_slew;

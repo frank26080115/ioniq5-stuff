@@ -9,6 +9,8 @@ extern uint32_t fletcher32(const uint16_t *data, size_t len);
 
 void settings_default()
 {
+    memset((void*)&hud_settings, 0, sizeof(settings_t));
+
     hud_settings.len = sizeof(settings_t);
 
     // set the default setting values here
@@ -17,6 +19,12 @@ void settings_default()
     hud_settings.speed_kmh_max = 0;
     hud_settings.speed_calib_rpm = 0;
     hud_settings.speed_calib_kmh = 0;
+
+    hud_settings.spdpredict_slew = 700;
+    // 636 is about 5 MPH
+    // assume 0-60 MPH in 1 second (which is way faster than what's possible), that's about 7.6 RPM in 1 millisecond
+    // assume worst case 100ms update rate, only 10 FPS, slew could be 700
+    hud_settings.spdpredict_factor = 0.8;
 
     hud_settings.ledbrite_tick = 0xFF;
     hud_settings.ledbrite_bar  = 0xFF;
