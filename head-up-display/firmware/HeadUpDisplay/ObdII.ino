@@ -349,7 +349,7 @@ void obd_parseVehicleDataBasic()
     }
 
     static int8_t assume_ignition = 0;
-    static int32_t stop_time = -1;
+    static uint32_t stop_time = 0;
 
     uint8_t* ptr = (uint8_t*)(&((obd_database[OBD_PID_MAINPACKET & 0xFF])[OBD_PACKET_START]));
 
@@ -363,14 +363,14 @@ void obd_parseVehicleDataBasic()
         car_data.rpm_max = car_data.rpm;
     }
 
-    if (car_data.rpm == 0 && stop_time < 0)
+    if (car_data.rpm != 0)
+    {
+        stop_time = 0;
+        car_data.idle_time_ms = 0;
+    }
+    else if (car_data.rpm == 0 && stop_time <= 0)
     {
         stop_time = millis();
-    }
-    else if (car_data.rpm != 0)
-    {
-        stop_time = -1;
-        car_data.idle_time_ms = 0;
     }
     else if (car_data.rpm == 0 && stop_time > 0)
     {

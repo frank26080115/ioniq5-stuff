@@ -10,8 +10,9 @@ void strip_init()
     strip_ctrler = &FastLED.addLeds<DOTSTAR, HUD_PIN_STRIP_DATA, HUD_PIN_STRIP_CLK, BGR>(leds, LED_STRIP_SIZE_VIRTUAL);
 }
 
-void strip_task(uint32_t now)
+void strip_task(uint32_t t)
 {
+    stripe_animate_step();
 }
 
 void strip_speedometer(double speed)
@@ -198,12 +199,11 @@ void strip_indicateRegen()
     static bool was_regen = false;
     uint32_t now = millis();
 
-    // TODO: check if actually in regenerative braking
-    bool is_regen;
+    bool is_regen = car_data.batt_current_x10 < -50;
 
     if (is_regen)
     {
-        // TODO: set ticking speed according to regen level
+        tick_speed = map(car_data.batt_current_x10, 0, -135, 100, 10); // set ticking speed according to regen level
 
         int i;
         int j = lround(floor(car_data.speed_mph / 10.0));
