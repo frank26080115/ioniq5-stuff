@@ -18,9 +18,9 @@ typedef struct
     uint8_t  throttle;
 
     uint16_t aux_batt_volt_x10;
-    int16_t  batt_current_x10;
-    uint16_t batt_voltage_x10;
-    int16_t  batt_power_x100;
+    int32_t  batt_current_x10;
+    uint32_t batt_voltage_x10;
+    int32_t  batt_power_x100;
     uint8_t  bms_soc_x2;
     uint16_t bms_soh_x10;
     uint8_t  soc_disp_x2;
@@ -68,8 +68,9 @@ typedef struct
     uint32_t amblight_min;  // minimum global LED brightness (during darkness)
     uint32_t amblight_expo; // curve of sensor response
 
-    float spdpredict_slew;   // limit on speed change due to prediction
-    float spdpredict_factor; // how dominant the prediction is in the result
+    float spdpredict_slew;       // limit on speed change due to prediction (0 = prediction is off)
+    float spdpredict_factor;     // how dominant the prediction is in the result (0 = prediction is off)
+    float spdpredict_jerkFilter; // LPF filter constant for the jerk (0 = filter is off)
 
     // LED brightness for animation elements
     uint8_t ledbrite_tick;
