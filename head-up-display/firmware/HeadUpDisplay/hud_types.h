@@ -59,16 +59,19 @@ typedef struct
     uint32_t len;
 
     int32_t  speed_multiplier; // actual variable used to calculate MPH from RPM, denominator is fixed
+    #if ENABLE_SPEED_CALIBRATION
     uint16_t speed_kmh_max;    // data used for calibration
     uint16_t speed_calib_rpm;  // data used for calibration
     uint16_t speed_calib_kmh;  // data used for calibration
+    #endif
 
-    uint32_t amblight_low;  // sensor reading while darkest
-    uint32_t amblight_high; // sensor reading while brightest
-    uint32_t amblight_min;  // minimum global LED brightness (during darkness)
-    uint32_t amblight_expo; // curve of sensor response
+    uint32_t amblight_low;    // sensor reading while darkest
+    uint32_t amblight_high;   // sensor reading while brightest
+    uint32_t amblight_min;    // minimum global LED brightness (during darkness)
+    uint32_t amblight_expo;   // curve of sensor response
+    uint32_t amblight_filter; // LPF filter constant, out of 1000
 
-    float spdpredict_slew;       // limit on speed change due to prediction (0 = prediction is off)
+    float spdpredict_slew;      // limit on speed change due to prediction (0 = prediction is off)
     float spdpredict_factor;     // how dominant the prediction is in the result (0 = prediction is off)
     float spdpredict_jerkFilter; // LPF filter constant for the jerk (0 = filter is off)
 

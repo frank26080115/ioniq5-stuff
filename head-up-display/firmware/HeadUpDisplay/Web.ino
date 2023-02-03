@@ -46,53 +46,45 @@ void web_init()
         request->send(SPIFFS, "/index.html", "text/html");
     });
 
-    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/style.css", "text/css");
-    });
-
-    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(SPIFFS, "/script.js", "text/javascript");
     });
 
-    server.on("/toast.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/toast.js", "text/javascript");
+    server.on("/get_spiffs_file", HTTP_GET, [](AsyncWebServerRequest *request) {
+        AsyncWebParameter* p = request->getParam(0);
+        String s = p->value();
+        char ss[128];
+        strncpy(&(ss[1]), s.c_str(), 125);
+        ss[0] = '/';
+        if (str_endswith(ss, ".css") == 0) {
+            request->send(SPIFFS, ss, "text/css");
+        }
+        else if (str_endswith(ss, ".js") == 0) {
+            request->send(SPIFFS, ss, "text/javascript");
+        }
+        else if (str_endswith(ss, ".png") == 0) {
+            request->send(SPIFFS, ss, "image/png");
+        }
+        else if (str_endswith(ss, ".svg") == 0) {
+            request->send(SPIFFS, ss, "image/svg+xml");
+        }
+        else {
+            request->send(SPIFFS, ss, "application/octet-stream");
+        }
     });
 
-    server.on("/canvasjs.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/canvasjs.min.js", "text/javascript");
+    server.on("/get_usd_file", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (battlog_cardReady == false) {
+            request->send(404);
+            return;
+        }
+        AsyncWebParameter* p = request->getParam(0);
+        String s = p->value();
+        char ss[128];
+        strncpy(&(ss[1]), s.c_str(), 125);
+        ss[0] = '/';
+        request->send(SD, ss, "application/octet-stream");
     });
-
-    server.on("/jquery.canvasjs.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/jquery.canvasjs.min.js", "text/javascript");
-    });
-
-    server.on("/jquery-3.6.3.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/jquery-3.6.3.min.js", "text/javascript");
-    });
-
-    server.on("/jquery-ui.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/jquery-3.6.3.min.js", "text/javascript");
-    });
-
-    server.on("/jquery-ui.css", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/jquery-ui.css", "text/css");
-    });
-
-    server.on("/jquery-ui.structure.min.css", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/jquery-ui.min.css", "text/css");
-    });
-
-    server.on("/jquery-ui.theme.css", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/jquery-ui.theme.css", "text/css");
-    });
-
-    server.on("/ui-icons.png", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/ui-icons.png", "image/png");
-    });
-
-    if (battlog_cardReady) {
-        server.serveStatic("/", SD, "/");
-    }
 
     ws.onEvent(web_onEvent);
     server.addHandler(&ws);
@@ -127,6 +119,23 @@ void web_task(uint32_t tnow)
     }
 
     dnsServer.processNextRequest();
+
+    web_sendSettingsReport(tnow);
+}
+
+static uint32_t web_settingsRptTime = 0;
+
+void web_sendSettingsReport(uint32_t tnow)
+{
+    if (web_settingsRptTime != 0 && (tnow - web_settingsRptTime) >= 2000) {
+        web_settingsRptTime = 0;
+        settings_report(log_printer.destinations[LOGPRINTER_IDX_WEBSOCK]);
+    }
+}
+
+void web_queueSettingsReport()
+{
+    web_settingsRptTime = millis();
 }
 
 void web_handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
@@ -154,11 +163,14 @@ void web_onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventT
                 Print* p = dynamic_cast<Print*>(&ws_printer);
                 log_printer.destinations[LOGPRINTER_IDX_WEBSOCK] = p;
                 Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+                settings_report(p);
+                web_settingsRptTime = 0;
             }
             break;
         case WS_EVT_DISCONNECT:
             Serial.printf("WebSocket client #%u disconnected\n", client->id());
             log_printer.destinations[LOGPRINTER_IDX_WEBSOCK] = NULL;
+            web_settingsRptTime = 0;
             break;
         case WS_EVT_DATA:
             web_handleWebSocketMessage(arg, data, len);

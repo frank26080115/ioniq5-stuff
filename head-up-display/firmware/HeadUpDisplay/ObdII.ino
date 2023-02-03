@@ -250,6 +250,8 @@ void obd_printCellVoltages(Print* p)
         return;
     }
 
+    p->print("cellvolts:,");
+
     char tmpstr[16];
     uint8_t pids[] = {
         OBD_PID_CELLVOLT_0 & 0xFF,
@@ -314,6 +316,9 @@ void obd_printBattBankTemperature_internal(Print* p, uint16_t pid, char idx_lett
 
 void obd_printBattBankTemperatures(Print* p)
 {
+    if (p != NULL) {
+        p->print("banktemps:,");
+    }
     obd_printBattBankTemperature_internal(p, OBD_PID_MAINPACKET, 'Q', 5);
     obd_printBattBankTemperature_internal(p, OBD_PID_BATT2NDARY, 'J', 10);
 }
@@ -400,7 +405,7 @@ void obd_parseVehicleDataBasic()
         car_data.ignition = true;
     }
 
-    if (car_data.rpm == 0 && car_data.idle_time_ms >= 1000 && (car_data.batt_current_x10 < 50 || car_data.charge_mode != 0))
+    if (car_data.rpm == 0 && car_data.idle_time_ms >= 3000 && (car_data.batt_current_x10 < -50 || car_data.charge_mode != 0))
     {
         assume_ignition = 0;
         car_data.ignition = false;
@@ -497,9 +502,11 @@ void obd_printLog(Print* p)
     return;
     #endif
 
+    #if ENABLE_SPEED_CALIBRATION
     if (speedcalib_log != false) {
         p->printf("%u, %u, %u, %u, ", hud_settings.speed_multiplier, hud_settings.speed_kmh_max, hud_settings.speed_calib_rpm, hud_settings.speed_calib_kmh);
     }
+    #endif
 
     p->printf("%u, 0x%02X, ", car_data.ignition, car_data.charge_mode);
 

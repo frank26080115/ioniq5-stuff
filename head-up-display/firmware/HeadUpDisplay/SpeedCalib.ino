@@ -41,7 +41,7 @@ void speedcalib_task(uint32_t now)
 
     #ifndef ENABLE_SPEED_CALIBRATION
     return;
-    #endif
+    #else
 
     if (hud_settings.speed_multiplier <= 0) {
         speedcalib_active |= true;
@@ -98,4 +98,5 @@ void speedcalib_task(uint32_t now)
             save_timer = now;
         }
     }
+    #endif
 }

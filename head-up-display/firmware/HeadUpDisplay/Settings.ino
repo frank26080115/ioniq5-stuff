@@ -16,19 +16,23 @@ void settings_default()
     // set the default setting values here
     //hud_settings.speed_multiplier = 0;
     hud_settings.speed_multiplier = RPM2MPH_E6;
+    #ifdef ENABLE_SPEED_CALIBRATION
     hud_settings.speed_kmh_max = 0;
     hud_settings.speed_calib_rpm = 0;
     hud_settings.speed_calib_kmh = 0;
+    #endif
 
-    hud_settings.spdpredict_slew = 700;
-    // 636 is about 5 MPH
-    // assume 0-60 MPH in 1 second (which is way faster than what's possible), that's about 7.6 RPM in 1 millisecond
-    // assume worst case 100ms update rate, only 10 FPS, slew could be 700
+    hud_settings.spdpredict_slew = 35;
     hud_settings.spdpredict_factor = 0.8;
 
     hud_settings.ledbrite_tick = 0xFF;
     hud_settings.ledbrite_bar  = 0xFF;
     hud_settings.ledbrite_volt = 0x80;
+
+    hud_settings.amblight_filter = 20;
+    hud_settings.amblight_min = 64;
+    hud_settings.amblight_high = 0;
+    hud_settings.amblight_low = (1024 * 4) - 1;
 }
 
 bool settings_load() {
@@ -62,19 +66,53 @@ void settings_save() {
 }
 
 uint32_t settings_saveLaterTime = 0;
+uint32_t settings_saveLaterTimeFirst = 0;
 
 void settings_saveLater()
 {
+    uint32_t now = millis();
     // delay the flash writing to preserve flash life
-    settings_saveLaterTime = millis();
+    settings_saveLaterTime = now;
+    if (settings_saveLaterTimeFirst <= 0) {
+        settings_saveLaterTimeFirst = now;
+    }
 }
 
-void settings_saveTask(bool force)
+void settings_saveTask(uint32_t now, bool force)
 {
-    if (settings_saveLaterTime != 0 && ((millis() - settings_saveLaterTime) >= 1000 || force)) {
+    if (settings_saveLaterTime != 0 && (((now - settings_saveLaterTime) >= 1000 || (now - settings_saveLaterTimeFirst) >= 5000) || force)) {
         settings_save();
         settings_saveLaterTime = 0;
+        settings_saveLaterTimeFirst = 0;
     }
+}
+
+void settings_factoryReset()
+{
+    settings_default();
+    settings_saveTask(millis(), true);
+}
+
+void settings_report(Print* p)
+{
+    if (p == NULL) {
+        return;
+    }
+    p->print("settings,");
+    p->printf("%d,"   , hud_settings.speed_multiplier);
+    p->printf("%d,"   , hud_settings.amblight_low);
+    p->printf("%d,"   , hud_settings.amblight_high);
+    p->printf("%d,"   , hud_settings.amblight_min);
+    p->printf("%d,"   , hud_settings.amblight_expo);
+    p->printf("%d,"   , hud_settings.amblight_filter);
+    p->printf("%.03f,", hud_settings.spdpredict_slew);
+    p->printf("%.03f,", hud_settings.spdpredict_factor);
+    p->printf("%.03f,", hud_settings.spdpredict_jerkFilter);
+    p->printf("%d,"   , hud_settings.ledbrite_tick);
+    p->printf("%d,"   , hud_settings.ledbrite_bar);
+    p->printf("%d,"   , hud_settings.ledbrite_volt);
+    p->printf("%.03f,", hud_settings.cell_imbalance);
+    p->print("\r\n");
 }
 
 uint32_t fletcher32(const uint16_t *data, size_t len)

@@ -6,14 +6,7 @@
 <title>HUD Web Intf</title>
 <link rel="shortcut icon" href="data:image/x-icon;base64," />
 
-<script type="application/javascript" src="jquery-3.6.3.min.js"></script>
-<script type="application/javascript" src="jquery-ui.min.js"></script>
-<script type="application/javascript" src="toast.js"></script>
 <script type="application/javascript" src="script.js"></script>
-<link rel="stylesheet" href="jquery-ui.css" />
-<link rel="stylesheet" href="jquery-ui.structure.min.css" />
-<link rel="stylesheet" href="jquery-ui.theme.css" />
-<link rel="stylesheet" href="style.css" />
 
 <style type="text/css">
 body
@@ -47,6 +40,7 @@ a:active {
     padding-bottom: 3pt;
     padding-left: 7pt;
     padding-right: 7pt;
+    width: 2em;
 }
 fieldset {
     margin-top: 1em;
@@ -126,9 +120,9 @@ var csv_columns = [
     "batt power",
     "inverter capacitor voltage",
     "BMS SoC",
-    "user SoC",
+    "disp SoC",
     "BMS SoH",
-    "aux batt voltage",
+    "aux batt voltage", // 12
     "cumulative charge current",
     "cumulative discharge current",
     "cumulative charge power",
@@ -138,46 +132,69 @@ var csv_columns = [
     "temperature indoor",
     "temperature outdoor",
     "temperature batt heater",
-    // cell voltages
-    // batt bank temperatures
+    "isolation resistance",
 ];
 
 function body_onLoad()
 {
+    if (typeof script_file_loaded !== 'undefined') {
+        dynamic_load_files(function (res) {
+            if (res == false) {
+                document.getElementById("load_failed").style.display = "block";
+                document.getElementById("loading").style.display = "none";
+            }
+            else {
+                actual_onLoad();
+            }
+        });
+    }
+    else {
+        document.getElementById("load_failed").style.display = "block";
+        document.getElementById("loading").style.display = "none";
+        return;
+    }
+}
+
+function actual_onLoad()
+{
+    //ws_initWebSocket();
+
     document.getElementById("loading").style.display = "none";
     document.getElementById("showme").style.display = "block";
 
     $("#btn_logstart").button().on("click", function(evt) {
-        
+        ws_send("\n" + "logstart" + "\n");
     });
 
     $("#btn_logstop").button().on("click", function(evt) {
-        
+        ws_send("\n" + "logstop" + "\n");
     });
 
     $("#btn_listfiles").button().on("click", function(evt) {
-        
+        ws_send("\n" + "listfiles" + "\n");
+        document.getElementById("div_filenames").innerHTML = "waiting for file list...";
     });
 
-    $( "#slider_brightnesstick" ).slider({
-        create: function() {
-            var handle = $( "#slider_brightnesstick_handle" );
-            handle.text( $( this ).slider( "value" ) );
-        },
-        slide: function( event, ui ) {
-            var handle = $( "#slider_brightnesstick_handle" );
-            handle.text( ui.value );
-        }
-    });
+    make_all_sliders();
 
-    $( "#num_speedcalib" ).spinner();
+    //$( "#num_speedcalib" ).spinner();
 
     make_data_table();
     make_battcell_table();
 
     $("#accordion").accordion({
-        heightStyle: "content"
+        heightStyle: "fill"
     });
+}
+
+function ws_userOnOpen()
+{
+    send_current_time();
+}
+
+function send_current_time()
+{
+    ws_send("\n" + "settime " + getTimeNum() + "\n");
 }
 
 function make_data_table()
@@ -207,12 +224,330 @@ function make_battcell_table()
     document.getElementById("div_cellbalance").innerHTML = tbl_txt;
 }
 
+var all_sliders = {};
+
+function make_all_sliders()
+{
+    var all = document.getElementsByTagName("div");
+    for (var i = 0, max_i = all.length; i < max_i; i++) {
+        var ele = all[i];
+        if (ele.id.startsWith("slider_") == false) {
+           continue;
+        }
+        if (ele.id.endsWith("_handle") != false) {
+           continue;
+        }
+        var slider_name = ele.id.substring(7);
+        var hdlele = document.createElement('div'); 
+        hdlele.id = ele.id + "_handle";
+        hdlele.classList.add("ui-slider-handle");
+        hdlele.classList.add("slider-custom-handle");
+        ele.appendChild(hdlele);
+        var slider = $("#" + ele.id).slider({
+            value: parseFloat(ele.getAttribute("value")),
+            min:   parseFloat(ele.getAttribute("min")),
+            max:   parseFloat(ele.getAttribute("max")),
+            step:  parseFloat(ele.getAttribute("step")),
+
+            create: function() {
+                var this_name = this.id.substring(7);
+                var handle = $( "#slider_" + this_name + "_handle" );
+                handle.text( $( this ).slider( "value" ) );
+            },
+            slide: function( event, ui ) {
+                var this_name = this.id.substring(7);
+                var handle = $( "#slider_" + this_name + "_handle" );
+                handle.text( ui.value );
+                ws_send("\n" + "editsetting " + this_name + " " + ui.value + "\n");
+            }
+        });
+        all_sliders[slider_name] = slider;
+        max_i += 1;
+    }
+}
+
+function set_slider_val(slider_name, val)
+{
+    if (!(slider_name in all_sliders)) {
+        console.log("slider \"" + slider_name + "\" is not found");
+        return;
+    }
+    all_sliders[slider_name].slider( "value", val );
+    var handle = $( "#slider_" + slider_name + "_handle" );
+    handle.text( val );
+}
+
+function ws_userFunc(msg)
+{
+    var split_raw = msg.split(',');
+    var split = [];
+    split_raw.forEach(ele => {
+        split.push(ele.trim());
+    });
+
+    if (split[0] == "log")
+    {
+        var logname = split[1];
+        // use the log name to determine if the log has started or not
+        if (logname.startsWith("battlog_"))
+        {
+            $("#btn_logstart").button("disable");
+            $("#btn_logstop").button("enable");
+            document.getElementById("div_filename").innerHTML = logname;
+        }
+        else
+        {
+            $("#btn_logstop").button("disable");
+            $("#btn_logstart").button("enable");
+            document.getElementById("div_filename").innerHTML = "not logging";
+        }
+
+        var amblight_val = parseFloat(split[2]);
+        var amblight_out = parseFloat(split[3]);
+        document.getElementById("div_amblightlevel").innerHTML = amblight_val + " ADC &rarr; " + amblight_out + " PWM";
+
+        var base_idx = 4;
+
+        var i = base_idx, j, k;
+        for (j = 0; i < split.length && j < csv_columns.length; i++, j++) {
+            document.getElementById("dt_itm_" + j).innerHTML = split[i];
+        }
+
+        batt_chart_submit(parseFloat(split[base_idx + csv_columns.indexOf("batt voltage")])
+                        , parseFloat(split[base_idx + csv_columns.indexOf("batt current")])
+                        , parseFloat(split[base_idx + csv_columns.indexOf("aux batt voltage")])
+                        , parseFloat(split[base_idx + csv_columns.indexOf("BMS SoC")])
+                        , parseFloat(split[base_idx + csv_columns.indexOf("disp SoC")])
+                        );
+
+        // look for the start of the cell voltages
+        for (i = base_idx, k = 0; i < split.length; i++) {
+            if (split[i] == "cellvolts:") {
+                k = i + 1;
+                break;
+            }
+        }
+        if (k != 0) // found
+        {
+            var cell_volts = [];
+            var volt_min = 99999;
+            var volt_max = 0;
+            var volt_sum = 0;
+            var volt_cnt = 0;
+            for (i = k, j = 0; i < split.length && j < batt_cell_cnt; i++, j++)
+            {
+                var x = parseFloat(split[i]);
+                if (x > 0)
+                {
+                    if (x < volt_min) {
+                        volt_min = x;
+                    }
+                    if (x > volt_max) {
+                        volt_max = x;
+                    }
+                    volt_sum += x;
+                    volt_cnt += 1;
+                }
+                cell_volts.push(x);
+            }
+            var volt_avg = volt_sum / volt_cnt;
+
+            for (j = 0; j < batt_cell_cnt && j < cell_volts.length; j++)
+            {
+                var s = make_coloured_span(cell_volts[j], volt_min, volt_avg, volt_max, 0, 120, 240);
+                document.getElementById("battcell_" + j + "_v").innerHTML = s;
+            }
+
+            // look for the start of the bank temperatures
+            for (i = base_idx, k = 0; i < split.length; i++) {
+                if (split[i] == "banktemps:") {
+                    k = i + 1;
+                    break;
+                }
+            }
+            if (k != 0) // found
+            {
+                var bank_temps = [];
+                var t_min = 99999;
+                var t_max = -99999;
+                for (i = k, j = 0; i < split.length && j < batt_bank_cnt; i++, j++)
+                {
+                    var x = parseFloat(split[i]);
+                    bank_temps.push(x);
+                    if (x < t_min) {
+                        t_min = x;
+                    }
+                    if (x > t_max) {
+                        t_max = x;
+                    }
+                }
+                for (j = 0; j < batt_cell_cnt && j < cell_volts.length; j++)
+                {
+                    k = Math.floor(j * batt_bank_cnt / batt_cell_cnt);
+                    if (k < batt_bank_cnt) {
+                        var s = make_coloured_span(bank_temps[k], t_min, (t_min + t_max) / 2, t_max, 240, 120, 0);
+                        document.getElementById("battcell_" + j + "_t").innerHTML = s;
+                    }
+                }
+            }
+        }
+    }
+    else if (split[0] == "settings")
+    {
+        set_slider_val("amblightlow"   , parseFloat(split[2]));
+        set_slider_val("amblighthigh"  , parseFloat(split[3]));
+        set_slider_val("amblightmin"   , parseFloat(split[4]));
+        set_slider_val("amblightcurve" , parseFloat(split[5]));
+        set_slider_val("amblightfilter", parseFloat(split[6]));
+
+        set_slider_val("brightnesstick", parseFloat(split[11]));
+        set_slider_val("brightnessbar" , parseFloat(split[12]));
+        set_slider_val("brightnessvolt", parseFloat(split[13]));
+    }
+    else if (msg.startsWith("files:"))
+    {
+        var msg2 = msg.substring(6);
+        split_raw = msg2.split(';');
+        split = [];
+        split_raw.forEach(ele => {
+            var x = ele.trim();
+            if (x.length > 0) {
+                split.push(x);
+            }
+        });
+        if (split.length > 0)
+        {
+            var divele = document.getElementById("div_filenames");
+            var diveletxt = "<ul>\r\n";
+            split.forEach(x => {
+                var s = "<li><a href=\"get_usd_file?file=" + x + "\">" + x + "</a></li>\r\n";
+                diveletxt += s;
+            });
+            diveletxt += "</ul>\r\n";
+            divele.innerHTML = diveletxt;
+        }
+    }
+}
+
+var batt_chart = null;
+var batt_chart_start_time = null;
+var batt_chart_data_voltage = [];
+var batt_chart_data_current = [];
+var batt_chart_data_aux = [];
+var batt_chart_data_soc_bms = [];
+var batt_chart_data_soc_disp = [];
+
+function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
+{
+    if (batt_chart == null)
+    {
+        batt_chart_start_time = Date.now();
+        batt_chart = new CanvasJS.Chart("div_graph_battery", {
+            theme: "dark1",
+            axisY:[{
+                    title: "Batt Voltage",
+                    includeZero: false,
+                    suffix: "V"
+                },
+                {
+                    title: "Batt Current",
+                    includeZero: true,
+                    suffix: "A"
+                },
+                {
+                    title: "SoC",
+                    includeZero: true,
+                    suffix: "%"
+                }
+            ],
+            axisY2:{
+                title: "Aux Voltage",
+                includeZero: false,
+                suffix: "V"
+            },
+            data:[{
+                    type: "spline",
+                    name: "Batt Voltage",
+                    showInLegend: true,
+                    axisYIndex: 0,
+                    markerSize: 0,
+                    dataPoints: batt_chart_data_voltage
+                },
+                {
+                    type: "spline",
+                    name: "Batt Current",
+                    showInLegend: true,
+                    axisYIndex: 1,
+                    markerSize: 0,
+                    dataPoints: batt_chart_data_current
+                },
+                {
+                    type: "spline",
+                    name: "SoC BMS",
+                    showInLegend: true,
+                    axisYIndex: 2,
+                    markerSize: 0,
+                    dataPoints: batt_chart_data_soc_bms
+                },
+                {
+                    type: "spline",
+                    name: "SoC Disp",
+                    showInLegend: true,
+                    axisYIndex: 2,
+                    markerSize: 0,
+                    dataPoints: batt_chart_data_soc_disp
+                },
+                {
+                    type: "spline",
+                    name: "Aux Voltage",
+                    showInLegend: true,
+                    axisYType: "secondary",
+                    markerSize: 0,
+                    dataPoints: batt_chart_data_aux
+                }
+            ]
+        });
+    }
+
+    var dt = new Date;
+    var delta_time = dt.getTime() - batt_chart_start_time;
+    var delta_hours = delta_time / (1000 * 3600);
+
+    if (delta_hours > 16)
+    {
+        if (batt_chart_data_voltage.length > 1000) {
+            batt_chart_data_voltage.shift();
+        }
+        if (batt_chart_data_current.length > 1000) {
+            batt_chart_data_current.shift();
+        }
+        if (batt_chart_data_aux.length > 1000) {
+            batt_chart_data_aux.shift();
+        }
+        if (batt_chart_data_soc_bms.length > 1000) {
+            batt_chart_data_soc_bms.shift();
+        }
+        if (batt_chart_data_soc_disp.length > 1000) {
+            batt_chart_data_soc_disp.shift();
+        }
+    }
+    batt_chart_data_voltage .push({ x: dt, y: batt_v });
+    batt_chart_data_current .push({ x: dt, y: batt_c });
+    batt_chart_data_aux     .push({ x: dt, y: aux_v });
+    batt_chart_data_soc_bms .push({ x: dt, y: bms_soc });
+    batt_chart_data_soc_disp.push({ x: dt, y: disp_soc });
+
+    batt_chart.render();
+}
+
 </script>
 
 </head>
 <body onload="body_onLoad();">
 
 <div id="loading"><h2>Loading... Please Wait...</h2></div>
+
+<div id="load_failed" style="display:none;"><h2>Loading failed, please refresh</h2></div>
 
 <div id="showme" style="display:none;">
 
@@ -232,10 +567,12 @@ function make_battcell_table()
         </div></fieldset></div>
     </div>
 
+<!--
     <h3>Graph: Driving</h3>
     <div>
         <div id="div_graph_driving">waiting for data...</div>
     </div>
+-->
 
     <h3>Graph: Battery</h3>
     <div>
@@ -251,42 +588,50 @@ function make_battcell_table()
     <div>
         <button id="btn_listfiles">List Files</button>
         <div><fieldset><legend>File List</legend><div>
-            <div id="div_filename">waiting for data...</div>
+            <div id="div_filenames">please press button to retrieve</div>
         </div></fieldset></div>
     </div>
 
+<!--
     <h3>Speed Calibration</h3>
     <div>
         <label for="num_speedcalib">Multiplier value:</label>
         <input id="num_speedcalib" name="num_speedcalib" />
     </div>
+-->
 
     <h3>LED Brightness Config</h3>
     <div>
         <div><fieldset><legend>Tick Brightness</legend><div>
-            <div id="slider_brightnesstick"><div id="slider_brightnesstick_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+            <div id="slider_brightnesstick" min="32" max="255" value="255" step="1"></div>
         </div></fieldset></div><br />
         <div><fieldset><legend>Bar Brightness</legend><div>
-            <div id="slider_brightnessbar"><div id="slider_brightnessbar_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+            <div id="slider_brightnessbar" min="32" max="255" value="255" step="1"></div>
         </div></fieldset></div><br />
         <div><fieldset><legend>Voltmeter Brightness</legend><div>
-            <div id="slider_brightnessvolt"><div id="slider_brightnessvolt_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+            <div id="slider_brightnessvolt" min="32" max="255" value="128" step="1"></div>
         </div></fieldset></div>
     </div>
 
     <h3>Ambient Light Calibration</h3>
     <div>
-        <div><fieldset><legend>Current Level</legend><div>
+        <div><fieldset><legend>Current</legend><div>
             <div id="div_amblightlevel">waiting for data...</div>
         </div></fieldset></div>
         <div><fieldset><legend>Low Point</legend><div>
-            <div id="slider_amblightlow"><div id="slider_amblightlow_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+            <div id="slider_amblightlow" min="0" max="4095" value="4095" step="1"></div>
         </div></fieldset></div>
         <div><fieldset><legend>High Point</legend><div>
-            <div id="slider_amblighthigh"><div id="slider_amblighthigh_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+            <div id="slider_amblighthigh" min="0" max="4095" value="0" step="1"></div>
+        </div></fieldset></div>
+        <div><fieldset><legend>Minimum PWM</legend><div>
+            <div id="slider_amblightmin" min="0" max="255" value="32" step="1"></div>
         </div></fieldset></div>
         <div><fieldset><legend>Curve</legend><div>
-            <div id="slider_amblightcurve"><div id="slider_amblightcurve_handle" class="slider-custom-handle ui-slider-handle"></div></div>
+            <div id="slider_amblightcurve" min="0" max="100" value="50" step="1"></div>
+        </div></fieldset></div>
+        <div><fieldset><legend>Filter</legend><div>
+            <div id="slider_amblightfilter" min="0" max="500" value="2" step="1"></div>
         </div></fieldset></div>
     </div>
 </div>

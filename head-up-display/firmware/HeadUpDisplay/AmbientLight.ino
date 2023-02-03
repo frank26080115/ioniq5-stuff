@@ -1,15 +1,13 @@
 #include "HeadUpDisplay.h"
 
-#define AMBLIGHT_LPF_FACTOR 20
 #define AMBLIGHT_LPF_DIV    1000
 
 bool amblight_dump = true;
 uint32_t amblight_dump_time = 0;
 
 int32_t amblight_val_x1000 = -1;
-int32_t amblight_val;
+int32_t amblight_val, amblight_raw;
 int16_t amblight_resbrite = -1;
-int16_t amblight_firstRaw = -1;
 
 void amblight_init()
 {
@@ -24,9 +22,8 @@ void amblight_task()
 {
     if (adcBusy(HUD_PIN_AMBLIGHT) == false)
     {
-        uint16_t x = adcEnd(HUD_PIN_AMBLIGHT);
-        amblight_firstRaw = (amblight_firstRaw < 0) ? x : amblight_firstRaw;
-        lpf_update(x, &amblight_val_x1000, AMBLIGHT_LPF_FACTOR, AMBLIGHT_LPF_DIV);
+        amblight_raw = adcEnd(HUD_PIN_AMBLIGHT);
+        lpf_update(amblight_raw, &amblight_val_x1000, hud_settings.amblight_filter, AMBLIGHT_LPF_DIV);
         amblight_val = lpf_read(amblight_val_x1000, AMBLIGHT_LPF_DIV);
         adcStart(HUD_PIN_AMBLIGHT);
 
@@ -35,7 +32,7 @@ void amblight_task()
             uint32_t now;
             if (((now = millis()) - amblight_dump_time) >= 200)
             {
-                Serial.printf("amblight[%u]: %u , %u , %u\r\n", now, x, amblight_val, amblight_get());
+                Serial.printf("amblight[%u]: %u , %u , %u\r\n", now, amblight_raw, amblight_val, amblight_get());
             }
         }
     }
@@ -61,4 +58,19 @@ int16_t amblight_get()
         amblight_task();
     }
     return amblight_resbrite = amblight_calc(amblight_val);
+}
+
+int32_t amblight_getRaw()
+{
+    return amblight_raw;
+}
+
+int32_t amblight_getFiltered()
+{
+    return amblight_val;
+}
+
+void amblight_print(Print* p)
+{
+    p->printf("%d, %d, %d,", amblight_raw, amblight_val, amblight_get());
 }

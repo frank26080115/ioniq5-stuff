@@ -91,6 +91,7 @@ void loop2(void* pvParameters)
             // since SD card writing is done in large chunks, do it only right after each frame of animation
             heartbeat_task(now = millis());
             battlog_task(now);
+            settings_saveTask(now, false);
             // subtract the time needed for the battery logging SD card write, to keep frame rate consistent
             hud_aniDelay -= millis() - now;
             hud_aniDelay = hud_aniDelay < 0 ? 0 : hud_aniDelay;

@@ -152,6 +152,12 @@ void battlog_log()
         Serial.printf("ERROR: log_printer failed to cast into Print*\r\n");
     }
 
+    if (log_printer.destinations[LOGPRINTER_IDX_WEBSOCK] != NULL) {
+        Print* wsp = log_printer.destinations[LOGPRINTER_IDX_WEBSOCK];
+        wsp->printf("log,%s,", battlog_filename);
+        amblight_print(wsp);
+    }
+
     obd_printLog(p2);
     p2->printf("\r\n");
 
@@ -177,6 +183,23 @@ void battlog_log()
     }
 }
 
+void battlog_webLogOnly(uint32_t now)
+{
+    static uint32_t last_time = 0;
+    if ((now - last_time) >= 500)
+    {
+        if (log_printer.destinations[LOGPRINTER_IDX_WEBSOCK] != NULL)
+        {
+            last_time = now;
+            Print* wsp = log_printer.destinations[LOGPRINTER_IDX_WEBSOCK];
+            wsp->printf("log,???,");
+            amblight_print(wsp);
+            obd_printLog(wsp);
+            wsp->printf("\r\n");
+        }
+    }
+}
+
 void battlog_task(uint32_t now)
 {
     static uint32_t last_log_time = 0;
@@ -184,6 +207,8 @@ void battlog_task(uint32_t now)
 
     if (battlog_fileReady == false)
     {
+        battlog_webLogOnly(now);
+
         if (battlog_needReinit != false && car_data.ignition == false && (now - last_log_time) >= 3000)
         {
             last_log_time = now;
