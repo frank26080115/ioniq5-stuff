@@ -188,9 +188,23 @@ function actual_onLoad()
     });
 }
 
+var last_toast = 0;
+
 function ws_userOnOpen()
 {
     send_current_time();
+    if (last_toast == 1) {
+        show_toast_msg("reconnected", "green", "white");
+        last_toast = 0;
+    }
+}
+
+function ws_userOnClose()
+{
+    if (last_toast != 1) {
+        show_toast_msg("disconnected", "red", "white");
+        last_toast = 1;
+    }
 }
 
 function send_current_time()

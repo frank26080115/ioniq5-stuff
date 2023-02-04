@@ -23,6 +23,22 @@ function make_coloured_span(val, val_min, val_avg, val_max, hue_min, hue_avg, hu
     return "<span style=\"color: hsl(" + h + "deg 100% 75%);\">" + val + "</span>";
 }
 
+// toast
+
+var prev_toast = null;
+
+function show_toast_msg(s, bg, txtc)
+{
+    var toast = new iqwerty.toast.Toast();
+    toast = toast.setText(s);
+    toast = toast.stylize({background: bg, color: txtc});
+    toast.show();
+    if (prev_toast != null) {
+        prev_toast.hide();
+    }
+    prev_toast = toast;
+}
+
 // dynamic loader
 
 var files_to_load = [
@@ -140,6 +156,7 @@ function ws_onClose(evt)
 {
     console.log('ws connection closed');
     ws_websocket = null;
+    ws_userOnClose();
 }
 
 function ws_onError(evt)
