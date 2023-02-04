@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 
-#define WSPRINTER_CACHE_SIZE 1024
+#define WSPRINTER_CACHE_SIZE (1024 * 4)
 
 class WebSocketPrinter : public Print
 {
