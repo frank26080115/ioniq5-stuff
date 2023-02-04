@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="initial-scale=1" />
-<title>HUD Web Intf</title>
+<title>HUD Web Disp</title>
 <link rel="shortcut icon" href="data:image/x-icon;base64," />
 
 <script type="application/javascript" src="script.js"></script>
@@ -122,7 +122,8 @@ var csv_columns = [
     "BMS SoC",
     "disp SoC",
     "BMS SoH",
-    "aux batt voltage", // 12
+    "aux batt voltage",
+    "requested charge current",
     "cumulative charge current",
     "cumulative discharge current",
     "cumulative charge power",
@@ -157,7 +158,7 @@ function body_onLoad()
 
 function actual_onLoad()
 {
-    //ws_initWebSocket();
+    ws_initWebSocket();
 
     document.getElementById("loading").style.display = "none";
     document.getElementById("showme").style.display = "block";
@@ -224,7 +225,10 @@ function make_battcell_table()
     document.getElementById("div_cellbalance").innerHTML = tbl_txt;
 }
 
-var all_sliders = {};
+var editsetting_timer = null;
+var editsetting_queue = {};
+
+var all_sliders = {}; // dictionary of the sliders so other code can easily access and change their values
 
 function make_all_sliders()
 {
@@ -258,9 +262,30 @@ function make_all_sliders()
                 var this_name = this.id.substring(7);
                 var handle = $( "#slider_" + this_name + "_handle" );
                 handle.text( ui.value );
-                ws_send("\n" + "editsetting " + this_name + " " + ui.value + "\n");
+
+                // if we sent the websocket message each time this event fires, it would overwhelm the ESP32
+                // thus, we start a timer to delay the message, the messages are queued and sent all at once
+
+                // cancel existing timer
+                if (editsetting_timer != null) {
+                    clearTimeout(editsetting_timer);
+                    editsetting_timer = null;
+                }
+
+                editsetting_timer = setTimeout(function() { // delay timer
+                    var s = "\n";
+                    // send all at once
+                    for (const [key, value] of Object.entries(editsetting_queue)) {
+                        s += "editsetting " + key + " " + value + "\n";
+                    }
+                    ws_send(s);
+                    editsetting_queue = {}; // clear the queue
+                }, 500);
+
+                editsetting_queue[this_name] = ui.value; // queue the message
             }
         });
+
         all_sliders[slider_name] = slider;
         max_i += 1;
     }
@@ -315,6 +340,7 @@ function ws_userFunc(msg)
 
         batt_chart_submit(parseFloat(split[base_idx + csv_columns.indexOf("batt voltage")])
                         , parseFloat(split[base_idx + csv_columns.indexOf("batt current")])
+                        , parseFloat(split[base_idx + csv_columns.indexOf("requested charge current")])
                         , parseFloat(split[base_idx + csv_columns.indexOf("aux batt voltage")])
                         , parseFloat(split[base_idx + csv_columns.indexOf("BMS SoC")])
                         , parseFloat(split[base_idx + csv_columns.indexOf("disp SoC")])
@@ -400,9 +426,9 @@ function ws_userFunc(msg)
         set_slider_val("amblightcurve" , parseFloat(split[5]));
         set_slider_val("amblightfilter", parseFloat(split[6]));
 
-        set_slider_val("brightnesstick", parseFloat(split[11]));
-        set_slider_val("brightnessbar" , parseFloat(split[12]));
-        set_slider_val("brightnessvolt", parseFloat(split[13]));
+        set_slider_val("brightnesstick", parseFloat(split[10]));
+        set_slider_val("brightnessbar" , parseFloat(split[11]));
+        set_slider_val("brightnessvolt", parseFloat(split[12]));
     }
     else if (msg.startsWith("files:"))
     {
@@ -433,11 +459,12 @@ var batt_chart = null;
 var batt_chart_start_time = null;
 var batt_chart_data_voltage = [];
 var batt_chart_data_current = [];
+var batt_chart_data_reqcur = [];
 var batt_chart_data_aux = [];
 var batt_chart_data_soc_bms = [];
 var batt_chart_data_soc_disp = [];
 
-function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
+function batt_chart_submit(batt_v, batt_c, batt_reqcur, aux_v, bms_soc, disp_soc)
 {
     if (batt_chart == null)
     {
@@ -450,7 +477,7 @@ function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
                     suffix: "V"
                 },
                 {
-                    title: "Batt Current",
+                    title: "Current",
                     includeZero: true,
                     suffix: "A"
                 },
@@ -466,7 +493,7 @@ function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
                 suffix: "V"
             },
             data:[{
-                    type: "spline",
+                    type: "line",
                     name: "Batt Voltage",
                     showInLegend: true,
                     axisYIndex: 0,
@@ -474,15 +501,23 @@ function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
                     dataPoints: batt_chart_data_voltage
                 },
                 {
-                    type: "spline",
-                    name: "Batt Current",
+                    type: "line",
+                    name: "Actual Current",
                     showInLegend: true,
                     axisYIndex: 1,
                     markerSize: 0,
                     dataPoints: batt_chart_data_current
                 },
                 {
-                    type: "spline",
+                    type: "line",
+                    name: "Requested Current",
+                    showInLegend: true,
+                    axisYIndex: 1,
+                    markerSize: 0,
+                    dataPoints: batt_chart_data_reqcur
+                },
+                {
+                    type: "line",
                     name: "SoC BMS",
                     showInLegend: true,
                     axisYIndex: 2,
@@ -490,7 +525,7 @@ function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
                     dataPoints: batt_chart_data_soc_bms
                 },
                 {
-                    type: "spline",
+                    type: "line",
                     name: "SoC Disp",
                     showInLegend: true,
                     axisYIndex: 2,
@@ -498,7 +533,7 @@ function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
                     dataPoints: batt_chart_data_soc_disp
                 },
                 {
-                    type: "spline",
+                    type: "line",
                     name: "Aux Voltage",
                     showInLegend: true,
                     axisYType: "secondary",
@@ -513,26 +548,19 @@ function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
     var delta_time = dt.getTime() - batt_chart_start_time;
     var delta_hours = delta_time / (1000 * 3600);
 
-    if (delta_hours > 16)
+    if ((delta_hours > 16 && batt_chart_data_voltage.length > 1000) || batt_chart_data_voltage.length > 50000)
     {
-        if (batt_chart_data_voltage.length > 1000) {
-            batt_chart_data_voltage.shift();
-        }
-        if (batt_chart_data_current.length > 1000) {
-            batt_chart_data_current.shift();
-        }
-        if (batt_chart_data_aux.length > 1000) {
-            batt_chart_data_aux.shift();
-        }
-        if (batt_chart_data_soc_bms.length > 1000) {
-            batt_chart_data_soc_bms.shift();
-        }
-        if (batt_chart_data_soc_disp.length > 1000) {
-            batt_chart_data_soc_disp.shift();
-        }
+        batt_chart_data_voltage .shift();
+        batt_chart_data_current .shift();
+        batt_chart_data_reqcur  .shift();
+        batt_chart_data_aux     .shift();
+        batt_chart_data_soc_bms .shift();
+        batt_chart_data_soc_disp.shift();
     }
+
     batt_chart_data_voltage .push({ x: dt, y: batt_v });
     batt_chart_data_current .push({ x: dt, y: batt_c });
+    batt_chart_data_reqcur  .push({ x: dt, y: batt_reqcur });
     batt_chart_data_aux     .push({ x: dt, y: aux_v });
     batt_chart_data_soc_bms .push({ x: dt, y: bms_soc });
     batt_chart_data_soc_disp.push({ x: dt, y: disp_soc });
@@ -551,7 +579,7 @@ function batt_chart_submit(batt_v, batt_c, aux_v, bms_soc, disp_soc)
 
 <div id="showme" style="display:none;">
 
-<h2>IONIQ 5 HUD Web Intf</h2>
+<h2>IONIQ 5 HUD Web Disp</h2>
 
 <div id="accordion">
 

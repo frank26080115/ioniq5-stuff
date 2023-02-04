@@ -20,8 +20,10 @@ void bringup_tests()
     //bringuptest_canbusquery();
     //bringuptest_canbusspy();
     //bringuptest_canbusspeed();
-    bringuptest_speedlog();
+    //bringuptest_speedlog();
+    //bringuptest_fastCharge();
     //bringuptest_stripAnimation();
+    bringuptest_web();
 }
 
 void bringuptest_console()
@@ -256,3 +258,54 @@ void bringuptest_speedlog()
     }
 }
 
+void bringuptest_fastCharge()
+{
+    static uint32_t last_time = 0;
+    static bool start_logging = false;
+    uint32_t now;
+    dbg_ser.enabled = true;
+    heartbeat_init();
+    canbus_init();
+    battlog_init();
+    battlog_startNewLog();
+    speedcalib_log = false;
+    speedcalib_active = false;
+    obd_poll_mode = OBDPOLLMODE_BATTLOG_SHORT;
+    while (true)
+    {
+        canbus_poll();
+        obd_queryTask(now = millis());
+        #if 0
+        if (obd_isResponding != false && start_logging == false) {
+            battlog_startNewLog();
+            start_logging = true;
+        }
+        if (start_logging != false)
+        {
+            battlog_task(now);
+        }
+        #else
+        battlog_task(now);
+        #endif
+        heartbeat_task(now);
+        obdstat_reportTask(now);
+        esp_task_wdt_reset();
+        vTaskDelay(5);
+    }
+}
+
+void bringuptest_web()
+{
+    uint32_t now;
+    dbg_ser.enabled = true;
+    heartbeat_init();
+    web_init();
+    while (true)
+    {
+        web_task(now = millis());
+        heartbeat_task(now);
+        cmdline.task();
+        settings_saveTask(now, false);
+        esp_task_wdt_reset();
+    }
+}

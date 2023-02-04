@@ -1,5 +1,6 @@
 #include "HeadUpDisplay.h"
 #include <SerialCmdLine.h>
+#include <SPIFFS.h>
 
 const cmd_def_t cmds[] = {
   { "factoryreset", factory_reset_func},
@@ -18,6 +19,8 @@ const cmd_def_t cmds[] = {
   { "settime"     , settime_func },
   { "logstop"     , logstop_func },
   { "logstart"    , logstart_func },
+  { "websocksend" , websocksend_func },
+  { "testspiffs"  , testspiffs_func },
   { "", NULL }, // end of table
 };
 
@@ -109,6 +112,18 @@ void listfiles_func(void* cmd, char* argstr, Stream* stream)
     wsp->print("\r\n");
 }
 
+void websocksend_func(void* cmd, char* argstr, Stream* stream)
+{
+    Print* wsp = log_printer.destinations[LOGPRINTER_IDX_WEBSOCK];
+    if (wsp == NULL) {
+        stream->printf("ERROR: websocket unavailable\r\n");
+        return;
+    }
+    stream->printf("websocket test send: %s\r\n", argstr);
+    wsp->print(argstr);
+    wsp->print('\n');
+}
+
 void query8_func(void* cmd, char* argstr, Stream* stream)
 {
     char* pos2;
@@ -153,13 +168,13 @@ void settime_func(void* cmd, char* argstr, Stream* stream)
 void logstop_func(void* cmd, char* argstr, Stream* stream)
 {
     battlog_close();
-    stream->print("logging stopped\r\n");
+    dbg_ser.printf("[%u] logging stopped\r\n", millis());
 }
 
 void logstart_func(void* cmd, char* argstr, Stream* stream)
 {
     battlog_startNewLog();
-    stream->print("logging stopped\r\n");
+    dbg_ser.printf("[%u] logging started\r\n", millis());
 }
 
 void editsetting_func(void* cmd, char* argstr, Stream* stream)
@@ -180,7 +195,7 @@ void editsetting_func(void* cmd, char* argstr, Stream* stream)
         return;
     }
 
-    signed long val = strtol(token2, NULL, 16);
+    signed long val = strtol(token2, NULL, 10);
 
     if (strcmp(token1, "amblightlow") == 0) {
         hud_settings.amblight_low = val;
@@ -217,4 +232,15 @@ void editsetting_func(void* cmd, char* argstr, Stream* stream)
 void readsettings_func(void* cmd, char* argstr, Stream* stream)
 {
     settings_report(log_printer.destinations[LOGPRINTER_IDX_WEBSOCK]);
+}
+
+void testspiffs_func(void* cmd, char* argstr, Stream* stream)
+{
+    File file = SPIFFS.open(argstr, FILE_READ);
+    if (!file) {
+        Serial.printf("ERROR: cannot open file \"%s\"\r\n");
+        return;
+    }
+    Serial.printf("OPENED file \"%s\"\r\n");
+    file.close();
 }

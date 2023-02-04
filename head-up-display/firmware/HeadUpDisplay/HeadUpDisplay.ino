@@ -10,6 +10,7 @@
 #include <FastLED.h>
 
 #include <FS.h>
+#include <SPIFFS.h>
 #include <SD.h>
 #include <SPI.h>
 
@@ -34,7 +35,8 @@ extern SerialCmdLine cmdline;
 void setup()
 {
     Serial.begin(115200);
-    settings_load();
+    settings_init();
+    SPIFFS.begin();
 
     bringup_tests();
 
@@ -42,6 +44,7 @@ void setup()
     heartbeat_init();
     canbus_init();
     battlog_init();
+    web_init();
 
     Serial.println("HUD all init done, spinning up 2nd thread");
 
@@ -65,7 +68,6 @@ void loop()
 
     cmdline.task();
     amblight_task();
-    web_task(now);
 }
 
 void loop2(void* pvParameters)
@@ -91,6 +93,7 @@ void loop2(void* pvParameters)
             // since SD card writing is done in large chunks, do it only right after each frame of animation
             heartbeat_task(now = millis());
             battlog_task(now);
+            web_task(now);
             settings_saveTask(now, false);
             // subtract the time needed for the battery logging SD card write, to keep frame rate consistent
             hud_aniDelay -= millis() - now;

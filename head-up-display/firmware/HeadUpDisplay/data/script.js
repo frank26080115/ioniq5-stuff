@@ -39,6 +39,7 @@ var files_to_load = [
 var dyn_load_prefix = "/get_spiffs_file?file=";
 
 var files_loaded = 0;
+var files_loading_idx = 0;
 
 var dynamic_load_onDone;
 
@@ -48,28 +49,38 @@ function dynamic_load_files(doneFunc)
         dyn_load_prefix = "";
     }
 
-    files_to_load.forEach(ele => {
-        if (ele.endsWith(".js")) {
-            var s = document.createElement('script'); 
-            s.setAttribute("type", "application/javascript");
-            s.src = dyn_load_prefix + ele;
-            s.onload = function() { 
-                files_loaded += 1;
-            };
-            document.head.appendChild(s);
-        }
-        else if (ele.endsWith(".css")) {
-            var s = document.createElement('link'); 
-            s.setAttribute("rel", "stylesheet");
-            s.href = ele;
-            s.onload = function() { 
-                files_loaded += 1;
-            };
-            document.head.appendChild(s);
-        }
-    });
+    dynamic_load_one_file();
+
     dynamic_load_onDone = doneFunc;
     setTimeout(dynamic_load_wait, 1000);
+}
+
+function dynamic_load_one_file() {
+    if (files_loading_idx >= files_to_load.length) {
+        return;
+    }
+    var ele = files_to_load[files_loading_idx];
+    if (ele.endsWith(".js")) {
+        var s = document.createElement('script'); 
+        s.setAttribute("type", "application/javascript");
+        s.src = dyn_load_prefix + ele;
+        s.onload = function() {
+            files_loaded += 1;
+            setTimeout(dynamic_load_one_file, 200);
+        };
+        document.head.appendChild(s);
+    }
+    else if (ele.endsWith(".css")) {
+        var s = document.createElement('link'); 
+        s.setAttribute("rel", "stylesheet");
+        s.href = dyn_load_prefix + ele;
+        s.onload = function() {
+            files_loaded += 1;
+            setTimeout(dynamic_load_one_file, 200);
+        };
+        document.head.appendChild(s);
+    }
+    files_loading_idx += 1;
 }
 
 var dynamic_load_wait_seconds = 0;
@@ -77,7 +88,7 @@ var dynamic_load_wait_seconds = 0;
 function dynamic_load_wait()
 {
     dynamic_load_wait_seconds += 1;
-    if (dynamic_load_wait_seconds >= 5) {
+    if (dynamic_load_wait_seconds >= 8) {
         script_file_loaded = false;
         dynamic_load_onDone(false);
     }
