@@ -23,9 +23,13 @@ extern settings_t hud_settings;
 
 extern bool speedcalib_active;
 
-extern int32_t amblight_val;
+extern uint8_t obd_poll_mode;
+extern bool    obd_queryPending;
+extern bool    obd_isResponding;
 
 extern bool battlog_cardReady;
 extern bool battlog_fileReady;
+
+extern bool wifi_isOff;
 
 #endif

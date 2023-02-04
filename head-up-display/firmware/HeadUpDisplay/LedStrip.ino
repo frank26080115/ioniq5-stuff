@@ -252,7 +252,7 @@ void stripe_animate_step()
     switch (hud_animation)
     {
         case HUDANI_OFF:
-            hud_aniDelay = 100;
+            hud_aniDelay = 200;
             break;
         case HUDANI_SPEEDOMETER:
             strip_speedometer(car_data.speed_mph);

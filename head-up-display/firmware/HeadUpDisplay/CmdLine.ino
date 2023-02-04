@@ -1,6 +1,5 @@
 #include "HeadUpDisplay.h"
 #include <SerialCmdLine.h>
-#include <SPIFFS.h>
 
 const cmd_def_t cmds[] = {
   { "factoryreset", factory_reset_func},
@@ -20,7 +19,6 @@ const cmd_def_t cmds[] = {
   { "logstop"     , logstop_func },
   { "logstart"    , logstart_func },
   { "websocksend" , websocksend_func },
-  { "testspiffs"  , testspiffs_func },
   { "", NULL }, // end of table
 };
 
@@ -174,6 +172,7 @@ void logstop_func(void* cmd, char* argstr, Stream* stream)
 void logstart_func(void* cmd, char* argstr, Stream* stream)
 {
     battlog_startNewLog();
+    obd_poll_mode = OBDPOLLMODE_BATTLOG_LONG;
     dbg_ser.printf("[%u] logging started\r\n", millis());
 }
 
@@ -232,15 +231,4 @@ void editsetting_func(void* cmd, char* argstr, Stream* stream)
 void readsettings_func(void* cmd, char* argstr, Stream* stream)
 {
     settings_report(log_printer.destinations[LOGPRINTER_IDX_WEBSOCK]);
-}
-
-void testspiffs_func(void* cmd, char* argstr, Stream* stream)
-{
-    File file = SPIFFS.open(argstr, FILE_READ);
-    if (!file) {
-        Serial.printf("ERROR: cannot open file \"%s\"\r\n");
-        return;
-    }
-    Serial.printf("OPENED file \"%s\"\r\n");
-    file.close();
 }

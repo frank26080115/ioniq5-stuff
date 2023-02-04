@@ -37,6 +37,7 @@
 #define BATTLOG_SYNC_INTERVAL 5000
 
 // below config options should all be disabled when the project is finished
+//#define ENABLE_BRINGUP_TESTS
 //#define DEBUG_STRIP
 //#define ENABLE_TEST_PRINT_DB
 //#define ENABLE_TEST_PRINT_SPEED_FAST
@@ -44,6 +45,7 @@
 //#define DISABLE_SPEED_PREDICTION
 //#define ENABLE_SPEED_PREDICTION_JERK_FILTER
 //#define DISABLE_WIFI_SLEEP
+//#define DISABLE_DEEP_SLEEP
 //#define FORCE_CARD_GOOD
 //#define FORCE_SETTINGS_DEFAULT
 

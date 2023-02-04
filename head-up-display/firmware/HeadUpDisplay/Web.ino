@@ -169,6 +169,9 @@ void web_onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventT
                 Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
                 settings_report(p);
                 web_settingsRptTime = 0;
+                if (obd_poll_mode < OBDPOLLMODE_BATTLOG_SHORT) {
+                    obd_poll_mode = OBDPOLLMODE_BATTLOG_SHORT;
+                }
             }
             break;
         case WS_EVT_DISCONNECT:

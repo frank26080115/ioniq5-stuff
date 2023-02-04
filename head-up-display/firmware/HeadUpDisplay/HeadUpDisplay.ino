@@ -38,7 +38,9 @@ void setup()
     settings_init();
     SPIFFS.begin();
 
+    #ifdef ENABLE_BRINGUP_TESTS
     bringup_tests();
+    #endif
 
     amblight_init();
     heartbeat_init();
@@ -47,6 +49,11 @@ void setup()
     web_init();
 
     Serial.println("HUD all init done, spinning up 2nd thread");
+
+    /*
+    loop is the "input" thread
+    loop2 is the "output" thread
+    */
 
     xTaskCreatePinnedToCore(
                 loop2,       /* Task function. */
@@ -72,6 +79,14 @@ void loop()
 
 void loop2(void* pvParameters)
 {
+    /*
+    loop2 is the "output" thread
+    it's supposed to keep a high refresh rate on the LED strip
+    since LED strip uses bit-bang SPI, this thread makes sure SD card access only happens after the LED strip has been refreshed
+    this will minimize any stuttering
+    note: data logging is mostly meant for battery charging, when the car is not moving
+    */
+
     #define LOOP2_MIN_DELAY 5
     while (true)
     {
@@ -100,10 +115,22 @@ void loop2(void* pvParameters)
             hud_aniDelay = hud_aniDelay < 0 ? 0 : hud_aniDelay;
         }
 
-        vTaskDelay(LOOP2_MIN_DELAY + MS_TO_RTOS_TICKS(hud_aniDelay)); // keep animation frame rate, and do other tasks
+        #ifndef DISABLE_DEEP_SLEEP
+        if (hud_state == HUDSTATE_OFF && car_data.ignition == false && battlog_fileReady == false && wifi_isOff != false && obd_queryPending == false && (hud_aniDelay >= 100 || hud_aniDelay <= 0))
+        {
+            esp_sleep_enable_timer_wakeup(hud_aniDelay * 1000);
+            esp_deep_sleep_start();
+            vTaskDelay(LOOP2_MIN_DELAY);
+        }
+        else
+        #endif
+        {
+            vTaskDelay(LOOP2_MIN_DELAY + MS_TO_RTOS_TICKS(hud_aniDelay)); // keep animation frame rate, and do other tasks
+        }
     }
 }
 
+// main application state machine
 void state_machine(uint32_t now)
 {
     if (hud_state == HUDSTATE_INIT)
