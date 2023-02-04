@@ -24,6 +24,7 @@ typedef struct
     uint8_t  bms_soc_x2;
     uint16_t bms_soh_x10;
     uint8_t  soc_disp_x2;
+    int32_t  req_current_x10;
 
     uint8_t  batt_fan_feedback;
     uint8_t  batt_fan_status;

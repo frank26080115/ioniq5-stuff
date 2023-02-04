@@ -459,6 +459,7 @@ void obd_parseVehicleDataBattery()
     car_data.bms_soc_x2 = ptr1['E' - 'A'];
     car_data.soc_disp_x2 = ptr2[31];
     car_data.bms_soh_x10 = pktparse_uint16_be(ptr2, 'Z' - 'A');
+    car_data.req_current_x10 = pktparse_uint16_be(ptr1, 'H' - 'A');
 
     car_data.charge_mode = ptr1['J' - 'A'];
 
@@ -480,7 +481,7 @@ void obd_parseVehicleDataBattery()
 void obd_printLog(Print* p)
 {
     #ifdef ENABLE_TEST_PRINT_DB
-    obd_printLog(p);
+    obd_printDb(p);
     return;
     #endif
     float tmp;
@@ -537,6 +538,10 @@ void obd_printLog(Print* p)
     p->printf("%0.1f, ", tmp);
 
     tmp = car_data.aux_batt_volt_x10;
+    tmp /= 10.0;
+    p->printf("%0.1f, ", tmp);
+
+    tmp = car_data.req_current_x10;
     tmp /= 10.0;
     p->printf("%0.1f, ", tmp);
 
