@@ -52,6 +52,9 @@ void settings_init() {
   if (settings_load() == false) { // if the data is invalid, load default values
     settings_default();
   }
+  #ifdef FORCE_SETTINGS_DEFAULT
+  settings_default();
+  #endif
 }
 
 void settings_save() {
@@ -99,18 +102,18 @@ void settings_report(Print* p)
         return;
     }
     p->print("settings,");
-    p->printf("%d,"   , hud_settings.speed_multiplier);
-    p->printf("%d,"   , hud_settings.amblight_low);
-    p->printf("%d,"   , hud_settings.amblight_high);
-    p->printf("%d,"   , hud_settings.amblight_min);
-    p->printf("%d,"   , hud_settings.amblight_expo);
-    p->printf("%d,"   , hud_settings.amblight_filter);
+    p->printf("%u,"   , hud_settings.speed_multiplier);
+    p->printf("%u,"   , hud_settings.amblight_low);
+    p->printf("%u,"   , hud_settings.amblight_high);
+    p->printf("%u,"   , hud_settings.amblight_min);
+    p->printf("%u,"   , hud_settings.amblight_expo);
+    p->printf("%u,"   , hud_settings.amblight_filter);
     p->printf("%.03f,", hud_settings.spdpredict_slew);
     p->printf("%.03f,", hud_settings.spdpredict_factor);
     p->printf("%.03f,", hud_settings.spdpredict_jerkFilter);
-    p->printf("%d,"   , hud_settings.ledbrite_tick);
-    p->printf("%d,"   , hud_settings.ledbrite_bar);
-    p->printf("%d,"   , hud_settings.ledbrite_volt);
+    p->printf("%u,"   , hud_settings.ledbrite_tick);
+    p->printf("%u,"   , hud_settings.ledbrite_bar);
+    p->printf("%u,"   , hud_settings.ledbrite_volt);
     p->printf("%.03f,", hud_settings.cell_imbalance);
     p->print("\r\n");
 }
