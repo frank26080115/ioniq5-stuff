@@ -35,18 +35,22 @@ void web_init()
     dnsServer.start(DNS_PORT, "*", apIP);
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        dbg_ser.printf("[%u]httpreq /\r\n", millis());
         request->send(SPIFFS, "/index.html", "text/html");
     });
 
     server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        dbg_ser.printf("[%u]httpreq /index.html\r\n", millis());
         request->send(SPIFFS, "/index.html", "text/html");
     });
 
     server.on("/index.htm", HTTP_GET, [](AsyncWebServerRequest *request) {
+        dbg_ser.printf("[%u]httpreq /index.htm\r\n", millis());
         request->send(SPIFFS, "/index.html", "text/html");
     });
 
     server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        dbg_ser.printf("[%u]httpreq /script.js\r\n", millis());
         request->send(SPIFFS, "/script.js", "text/javascript");
     });
 
@@ -56,16 +60,17 @@ void web_init()
         char ss[128];
         strncpy(&(ss[1]), s.c_str(), 125);
         ss[0] = '/';
-        if (str_endswith(ss, ".css") == 0) {
+        dbg_ser.printf("[%u]httpreq /get_spiffs_file %s\r\n", millis(), ss);
+        if (str_endswith(ss, ".css") != 0) {
             request->send(SPIFFS, ss, "text/css");
         }
-        else if (str_endswith(ss, ".js") == 0) {
+        else if (str_endswith(ss, ".js") != 0) {
             request->send(SPIFFS, ss, "text/javascript");
         }
-        else if (str_endswith(ss, ".png") == 0) {
+        else if (str_endswith(ss, ".png") != 0) {
             request->send(SPIFFS, ss, "image/png");
         }
-        else if (str_endswith(ss, ".svg") == 0) {
+        else if (str_endswith(ss, ".svg") != 0) {
             request->send(SPIFFS, ss, "image/svg+xml");
         }
         else {
@@ -83,23 +88,21 @@ void web_init()
         char ss[128];
         strncpy(&(ss[1]), s.c_str(), 125);
         ss[0] = '/';
+        dbg_ser.printf("[%u]httpreq /get_usd_file %s\r\n", millis(), ss);
         request->send(SD, ss, "application/octet-stream");
     });
 
     ws.onEvent(web_onEvent);
     server.addHandler(&ws);
-}
 
-String web_fnameReplacer(const String& var)
-{
-    if (var == "FNAME") {
-        return battlog_filename;
-    }
-    return String();
+    Serial.printf("websocket init: http://%s/\r\n", WiFi.softAPIP().toString().c_str());
+
+    server.begin();
 }
 
 void web_task(uint32_t tnow)
 {
+    #ifndef DISABLE_WIFI_SLEEP
     if (wifi_isOff) {
         return;
     }
@@ -117,6 +120,7 @@ void web_task(uint32_t tnow)
             return;
         }
     }
+    #endif
 
     dnsServer.processNextRequest();
 
@@ -169,6 +173,7 @@ void web_onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventT
             break;
         case WS_EVT_DISCONNECT:
             Serial.printf("WebSocket client #%u disconnected\n", client->id());
+            ws_printer.enabled = false;
             log_printer.destinations[LOGPRINTER_IDX_WEBSOCK] = NULL;
             web_settingsRptTime = 0;
             break;
