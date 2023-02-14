@@ -1,0 +1,1 @@
+Used to hold an emergency glass break hammer. It is 3D printed, VHB taped to the passenger side foot-well. It requires a magnet retain the hammer.
