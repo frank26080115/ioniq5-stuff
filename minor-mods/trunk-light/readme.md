@@ -37,11 +37,11 @@ Step 3 - Prepare the LED Light Bar
 
 ![](strip.jpg)
 
-Find a LED light bar that you like, as long as it is powered by 12V, and is rated for 5W or lower. (I think the limit is 10W but I don't want to push my luck)
+Find a LED light bar that you like, as long as it is powered by 12V, and is specified as 6W or lower. (I think the limit is 10W but I don't want to push my luck, this particular signal is not individually protected by a fuse)
 
-The light bar should have a positive wire (often red) and a negative wire (often black). We need the whole wire to be long enough to go from the top of the trunk, down along the rubber seal, into where the original luggage light goes. If the provided wires are not long enough, either extend them or replace them.
+The light bar should have a positive wire (often red) and a negative wire (often black). We need the whole wire to be long enough to go from the top of the trunk, down along the rubber seal, into where the original luggage light goes (use 6 feet please). If the provided wires are not long enough, either extend them or replace them.
 
-Soldering on new wires will get the cleanest look. If you cannot solder, then use heat-shrink solder butt joints, or crimp-on butt joints, or inline wire splices.
+Soldering on new wires will get the cleanest look. If you cannot solder, then use heat-shrink solder butt joints, or crimp-on butt joints, or inline wire splices. You will need to hide the bulk above the ceiling instead of under the rubber.
 
 Step 4 - Attach the Light Bar
 -----------------------------
