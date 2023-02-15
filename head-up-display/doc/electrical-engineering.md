@@ -7,6 +7,8 @@ I build the whole circuit onto a 70mm x 50mm perfboard. The signals are mostly e
 
 ![](circuitboard-bottom.jpg)
 
+![](circuitboard-top-labelled.png)
+
 ![](hud-circuit-angledview.jpg)
 
 ![](../electrical/schematic.png)
