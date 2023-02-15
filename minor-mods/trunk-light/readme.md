@@ -19,7 +19,7 @@ This should come off easily, there's no risk of breaking anything, the clipping 
 
 The light diffuser (the translucent part) and the bulb holder (the black part) should come out. You'll notice some clips holding the light diffuser. Squish on the bulb holder so that these clips release the light diffuser.
 
-Remove the light bulb, simply pry it out with a flat-head screwdriver.
+Disconnect the cable. Remove the light bulb, simply pry it out with a flat-head screwdriver.
 
 Step 2 - Attach a Connector to the Bulb Holder
 ----------------------------------------------
@@ -28,7 +28,9 @@ Step 2 - Attach a Connector to the Bulb Holder
 
 Using a soldering iron and solder, solder a JST-RCY female connector to the metalic parts of the bulb holder. Please pay attention to the wire colours, and the polarity (location of the holes, as indicated in the pictures).
 
-ALTERNATIVE: Put a T-tap wire splice on the white and orange wire. The white wire is positive, the orange wire is negative. (note: I do not prefer this alternative method because, if I make a mistake, it's much easier to replace the bulb holder than it is to replace an entire wire harness)
+ALTERNATIVE: Put a T-tap wire splice on the white and orange wire. The white wire is positive, the orange wire is negative.
+
+WARNING: Please disconnect the car's 12V battery if you are using wire splices.
 
 NOTE: from the car, white wire is positive, orange wire is negative
 
@@ -70,4 +72,6 @@ Once the new long wire pokes out of the luggage light hole, attach a JST-RCY mal
 
 ALTERNATIVE: If you used a T-tap wire splice, then simply attach the wire splice to the end of the new wire. Pay attention to the polarity!
 
-Tuck away all the loose wire into the car, and reattach the original luggage light. You are done.
+WARNING: Please disconnect the car's 12V battery if you are using wire splices.
+
+Tuck away all the loose wire into the car, and reattach the original luggage light. You are done. (reconnect the car's 12V battery if you have previously disconnected it)
