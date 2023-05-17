@@ -14,6 +14,10 @@ bool     obd_hasNewSpeed = false;
 bool     obd_gotNewSpeed = false;
 bool     obd_isResponding = false;
 
+query_t obd_queryQueueFifo[32];
+uint8_t obd_queryQueueW = 0;
+uint8_t obd_queryQueueR = 0;
+
 int32_t obdstat_rxCnt = 0;
 int32_t obdstat_txCnt = 0;
 int32_t obdstat_logCnt = 0;
@@ -23,14 +27,13 @@ extern bool speedcalib_log;
 void obd_queryTask(uint32_t tnow)
 {
     static uint8_t tick = 0;
-    static uint32_t item = 0;
 
     uint32_t qrate = 51; // value of 51 here got about 10 updates per second, unable to push it any faster
     uint32_t qtimeout = 200;
 
     if (car_data.ignition == false)
     {
-        qrate = 500;
+        qrate = 200;
         qtimeout = 600;
     }
 
@@ -42,85 +45,58 @@ void obd_queryTask(uint32_t tnow)
     {
         if (obd_poll_mode != OBDPOLLMODE_IDLE)
         {
-            tick++;
-            tick %= 2 * 3 * 5;
-            //if (obd_poll_mode == OBDPOLLMODE_EXTRAFAST)
-            //{
-            //    canbus_queryStandardPid(OBD_PID_SIMPLESPEED, 0x7DF);
-            //}
-            //else 
-            if (obd_poll_mode == OBDPOLLMODE_SIMPLE)
+            if (tick == 0)
             {
-                if (hud_settings.speed_multiplier > 0 && speedcalib_active == false)
-                {
-                    canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
-                }
-                else // hud_settings.speed_multiplier <= 0 || speedcalib_active != false
-                {
-                    uint32_t tick_mod = tick % 2; // 3;
-                    if (tick_mod == 0) {
-                        canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
-                    }
-                    else if (tick_mod == 1) {
-                        canbus_queryEnhancedPid(OBD_PID_REALSPEED, 0x7B3);
-                    }
-                    //else if (tick_mod == 2) {
-                    //    canbus_queryStandardPid(OBD_PID_THROTTLE, 0x7DF);
-                    //}
-                }
-            }
-            else if (obd_poll_mode == OBDPOLLMODE_BATTLOG_SHORT)
-            {
-                uint32_t tick_mod = tick % 2;
-                if ((tick_mod != 0 && car_data.ignition != false) || (tick_mod == 0 && car_data.ignition == false))
-                {
-                    canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
-                }
-                else if (car_data.ignition == false)
-                {
-                    switch (item)
-                    {
-                        case 0:  canbus_queryEnhancedPid(OBD_PID_BATT2NDARY, 0x7E4); item++; break;
-                        default: canbus_queryEnhancedPid(OBD_PID_REALSPEED , 0x7B3); item++; break;
-                    }
-                    item = (item >= 2) ? 0 : item;
-                }
-                else
-                {
-                    switch (item)
-                    {
-                        case 0:
-                        case 2:
-                                 canbus_queryEnhancedPid(OBD_PID_BATT2NDARY, 0x7E4); item++; break;
-                        default: canbus_queryEnhancedPid(OBD_PID_REALSPEED , 0x7B3); item++; break;
-                    }
-                    item = (item >= 4) ? 0 : item;
-                }
-            }
-            else if (obd_poll_mode == OBDPOLLMODE_BATTLOG_LONG)
-            {
-                uint32_t tick_mod = tick % 5;
+                canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
 
-                if ((tick_mod != 0 && car_data.ignition != false) || (tick_mod == 0 && car_data.ignition == false))
+                obd_queryQueueW = 0;
+                obd_queryQueueR = 0;
+
+                tick = 1;
+
+                //obd_queryQueuePush(OBD_PID_INDICATORS, 0x770);
+
+                if (car_data.speed_mph < 5)
                 {
-                    canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
+                    obd_queryQueuePush(OBD_PID_THRGEAR, 0x7E4);
+                    obd_queryQueuePush(OBD_PID_BRAKE, 0x7A0);
                 }
-                else
+
+                if (hud_settings.speed_multiplier == 0 || speedcalib_active)
                 {
-                    switch (item)
-                    {
-                        case  0: canbus_queryEnhancedPid(OBD_PID_BATT2NDARY, 0x7E4); item++;   break;
-                        case  1: canbus_queryEnhancedPid(OBD_PID_CELLVOLT_0, 0x7E4); item++;   break;
-                        case  2: canbus_queryEnhancedPid(OBD_PID_CELLVOLT_1, 0x7E4); item++;   break;
-                        case  3: canbus_queryEnhancedPid(OBD_PID_CELLVOLT_2, 0x7E4); item++;   break;
-                        case  4: canbus_queryEnhancedPid(OBD_PID_CELLVOLT_3, 0x7E4); item++;   break;
-                        case  5: canbus_queryEnhancedPid(OBD_PID_CELLVOLT_4, 0x7E4); item++;   break;
-                        case  6: canbus_queryEnhancedPid(OBD_PID_CELLVOLT_5, 0x7E4); item++;   break;
-                        //case  7: canbus_queryStandardPid(OBD_PID_THROTTLE  , 0x7DF); item++;   break;
-                        default: canbus_queryEnhancedPid(OBD_PID_REALSPEED , 0x7B3); item = 0; break;
-                    }
+                    obd_queryQueuePush(OBD_PID_REALSPEED, 0x7B3);
+                }
+
+                if (obd_poll_mode == OBDPOLLMODE_BATTLOG_SHORT)
+                {
+                    obd_queryQueuePush(OBD_PID_BATT2NDARY, 0x7E4);
+                }
+                else if (obd_poll_mode == OBDPOLLMODE_BATTLOG_LONG)
+                {
+                    obd_queryQueuePush(OBD_PID_BATT2NDARY, 0x7E4);
+                    obd_queryQueuePush(OBD_PID_CELLVOLT_0, 0x7E4);
+                    obd_queryQueuePush(OBD_PID_CELLVOLT_1, 0x7E4);
+                    obd_queryQueuePush(OBD_PID_CELLVOLT_2, 0x7E4);
+                    obd_queryQueuePush(OBD_PID_CELLVOLT_3, 0x7E4);
+                    obd_queryQueuePush(OBD_PID_CELLVOLT_4, 0x7E4);
+                    obd_queryQueuePush(OBD_PID_CELLVOLT_5, 0x7E4);
                 }
             }
+            else if (tick == obd_queryQueueW / 2 && obd_queryQueueW >= 4)
+            {
+                // get the RPM reading frequently
+                canbus_queryEnhancedPid(OBD_PID_MAINPACKET, 0x7E4);
+                tick += 1;
+            }
+            else
+            {
+                obd_queryQueuePop();
+                if (obd_queryQueueR == obd_queryQueueW) // queue empty
+                {
+                    tick = 0; // restart the queue on next iteration
+                }
+            }
+
             obd_queryPending = true;
             obd_lastQueryTime = tnow;
             obd_lastRespTime = tnow;
@@ -153,7 +129,7 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
     }
 
     int16_t pid8 = -1;
-    uint16_t pid16;
+    uint16_t pid16 = 0;
     uint8_t service_code = data[0];
     if (service_code == 0x62) // response to 0x22
     {
@@ -161,16 +137,15 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
         pid16 = data[1];
         pid16 <<= 8;
         pid16 |= data[2];
-        pid8 = pid16 & 0xFF;
 
-        if (pid8 > 0x0F)
-        {
-            pid8 = -1; // mark as invalid
+        pid8 = pid16 & 0xFF;
+        if (data[1] != 0x01) {
+            pid8 |= 0x10;
         }
     }
     else if (service_code == 0x41 || service_code == 0x42)
     {
-        uint8_t pid8 = (data[1] & 0x0F) | 0x10;
+        pid8 = (data[1] & 0x0F) | 0x10;
     }
 
     if (pid8 >= 0 && pid8 <= 0x1F)
@@ -214,6 +189,8 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
                     spdpredict_submit(car_data.rpm, now);
                     break;
                 case (OBD_PID_THROTTLE & 0x0F) | 0x10:
+                case (OBD_PID_THRGEAR  & 0x0F) | 0x10:
+                case (OBD_PID_BRAKE    & 0x0F) | 0x10:
                     obd_parseVehicleDataThrottle();
                     break;
                 case (OBD_PID_MAINPACKET & 0x1F):
@@ -234,6 +211,9 @@ bool obd_parse(uint8_t* data, uint16_t datalen)
                         obd_parseVehicleDataSpeedCalibration();
                     }
                     obd_parseVehicleDataBattery();
+                    break;
+                case (OBD_PID_INDICATORS  & 0x0F) | 0x10:
+                    obd_parseVehicleDataIndicators();
                     break;
             }
 
@@ -345,6 +325,17 @@ void obd_parseVehicleDataThrottle()
         uint8_t* ptr = (uint8_t*)(&((obd_database[(OBD_PID_THROTTLE & 0x0F) | 0x10])[2]));
         car_data.throttle = ptr[1];
     }
+    if (obd_database[(OBD_PID_THRGEAR & 0x0F) | 0x10] != NULL)
+    {
+        uint8_t* ptr = (uint8_t*)(&((obd_database[(OBD_PID_THRGEAR & 0x0F) | 0x10])[OBD_PACKET_START]));
+        car_data.throttle =  ptr['J' - 'A'] / 2;
+        car_data.gear     = (ptr['O' - 'A'] & 0x0F) + 1;
+    }
+    if (obd_database[(OBD_PID_BRAKE & 0x0F) | 0x10] != NULL)
+    {
+        uint8_t* ptr = (uint8_t*)(&((obd_database[(OBD_PID_BRAKE & 0x0F) | 0x10])[OBD_PACKET_START]));
+        car_data.brake = (ptr['G' - 'A'] & 0x10) != 0;
+    }
 }
 
 void obd_parseVehicleDataBasic()
@@ -394,7 +385,7 @@ void obd_parseVehicleDataBasic()
         assume_ignition = -1;
     }
 
-    if (assume_ignition == 0 && car_data.ignition == false && car_data.rpm != 0)
+    if (assume_ignition == 0 && car_data.ignition == false && (car_data.rpm != 0 || car_data.gear > GEAR_PARK))
     {
         assume_ignition = 1;
         car_data.ignition = true;
@@ -405,7 +396,7 @@ void obd_parseVehicleDataBasic()
         car_data.ignition = true;
     }
 
-    if (car_data.rpm == 0 && car_data.idle_time_ms >= 3000 && (car_data.batt_current_x10 < -50 || car_data.charge_mode != 0))
+    if (car_data.rpm == 0 && car_data.gear <= GEAR_PARK && car_data.idle_time_ms >= 3000 && (car_data.batt_current_x10 < -50 || car_data.charge_mode != 0))
     {
         assume_ignition = 0;
         car_data.ignition = false;
@@ -443,6 +434,16 @@ void obd_parseVehicleDataSpeedCalibration()
     }
 
     car_data.speed_kmh_max = car_data.speed_kmh > car_data.speed_kmh_max ? car_data.speed_kmh : car_data.speed_kmh_max;
+}
+
+void obd_parseVehicleDataIndicators()
+{
+    uint8_t* ptr;
+    if (obd_database[(OBD_PID_INDICATORS & 0x0F) | 0x10] != NULL)
+    {
+        ptr = (uint8_t*)(&((obd_database[(OBD_PID_INDICATORS & 0x0F) | 0x10])[OBD_PACKET_START]));
+        car_data.turn_sig = ptr[7];
+    }
 }
 
 void obd_parseVehicleDataBattery()
@@ -510,6 +511,8 @@ void obd_printLog(Print* p)
     #endif
 
     p->printf("%u, 0x%02X, ", car_data.ignition, car_data.charge_mode);
+
+    p->printf("%u, 0x%02X, %u, ", car_data.throttle, car_data.gear, car_data.brake);
 
     tmp = car_data.batt_current_x10;
     tmp /= 10.0;
@@ -623,4 +626,20 @@ void obdstat_reportTask(uint32_t now)
         last_time = now;
         Serial.printf("[%u]: OBD2-STAT: %u ; %u ; %u\r\n", now, obdstat_rxCnt, obdstat_txCnt, obdstat_logCnt);
     }
+}
+
+void obd_queryQueuePush(uint32_t pid, uint32_t dev)
+{
+    obd_queryQueueFifo[obd_queryQueueW].pid = pid;
+    obd_queryQueueFifo[obd_queryQueueW].dev = dev;
+    obd_queryQueueW += 1;
+}
+
+void obd_queryQueuePop()
+{
+    uint32_t pid, dev;
+    pid = obd_queryQueueFifo[obd_queryQueueR].pid;
+    dev = obd_queryQueueFifo[obd_queryQueueR].dev;
+    obd_queryQueueR += 1;
+    canbus_queryEnhancedPid(pid, dev);
 }

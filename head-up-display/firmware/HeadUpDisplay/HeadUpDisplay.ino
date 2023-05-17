@@ -142,7 +142,7 @@ void state_machine(uint32_t now)
             hud_animation_queue = HUDANI_OFF;
             dbg_ser.printf("[%u]: SM init -> moving\r\n", now);
         }
-        else if (car_data.ignition != false)
+        else if (car_data.ignition != false || car_data.gear == GEAR_DRIVE || car_data.gear == GEAR_REVERSE)
         {
             hud_state = HUDSTATE_IGNITION;
             hud_animation = HUDANI_INTRO;
@@ -155,7 +155,7 @@ void state_machine(uint32_t now)
             hud_state = HUDSTATE_OFF;
             hud_offTime = now;
         }
-        else if (now >= 2000 && car_data.ignition == false)
+        else if (now >= 2000 && (car_data.ignition == false || car_data.gear == GEAR_PARK))
         {
             hud_state = HUDSTATE_IDLECHECK;
             hud_animation = HUDANI_VOLTMETER_FADEIN;
@@ -166,7 +166,7 @@ void state_machine(uint32_t now)
     }
     else if (hud_state == HUDSTATE_IDLECHECK)
     {
-        if (car_data.rpm > 0 || car_data.ignition != false)
+        if (car_data.rpm > 0 || (car_data.ignition != false || car_data.gear == GEAR_DRIVE || car_data.gear == GEAR_REVERSE))
         {
             hud_state = HUDSTATE_MOVING;
             hud_animation = HUDANI_VOLTMETER_FADEOUT;
@@ -191,7 +191,7 @@ void state_machine(uint32_t now)
             hud_aniStep = 0;
             dbg_ser.printf("[%u]: SM ignition -> moving\r\n", now);
         }
-        else if (car_data.ignition == false)
+        else if (car_data.ignition == false || car_data.gear == GEAR_PARK)
         {
             hud_state = HUDSTATE_OFF;
             hud_offTime = now;
@@ -203,7 +203,7 @@ void state_machine(uint32_t now)
     }
     else if (hud_state == HUDSTATE_MOVING)
     {
-        if (car_data.ignition == false)
+        if (car_data.ignition == false || car_data.gear == GEAR_PARK)
         {
             hud_state = HUDSTATE_OFF;
             hud_offTime = now;
@@ -221,7 +221,7 @@ void state_machine(uint32_t now)
             hud_aniStep = 0;
             dbg_ser.printf("[%u]: SM voltmeter fadeout\r\n", now);
         }
-        if (car_data.ignition != false)
+        if (car_data.ignition != false || car_data.gear == GEAR_DRIVE || car_data.gear == GEAR_REVERSE)
         {
             if (battlog_fileReady == false) // do not restart if logging is active
             {
@@ -232,4 +232,6 @@ void state_machine(uint32_t now)
             }
         }
     }
+
+    dragrace_task(now);
 }
