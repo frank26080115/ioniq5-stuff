@@ -1,0 +1,38 @@
+#include "HeadUpDisplay.h"
+
+#if defined(HUD_USE_BLE)
+
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+class BleCallbacks : public BLECharacteristicCallbacks
+{
+    void onWrite(BLECharacteristic *pCharacteristic)
+    {
+    }
+};
+
+void ble_init()
+{
+    BLEDevice::init("IONIQ5-HUD");
+    BLEServer         *pServer         = BLEDevice::createServer();
+    BLEService        *pService        = pServer->createService(SERVICE_UUID);
+    BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+                                         CHARACTERISTIC_UUID,
+                                         BLECharacteristic::PROPERTY_READ |
+                                         BLECharacteristic::PROPERTY_WRITE
+                                       );
+
+    pCharacteristic->setCallbacks(new BleCallbacks());
+    pCharacteristic->setValue("Connected.");
+    pService->start();
+
+    BLEAdvertising *pAdvertising = pServer->getAdvertising();
+    pAdvertising->start();
+}
+
+#endif // HUD_USE_BLE
