@@ -16,6 +16,9 @@ typedef struct
     int16_t  speed_kmh_max;
     float    speed_mph;     // contains MPH results after conversion and prediction
     uint8_t  throttle;
+    uint8_t  gear;
+    bool     brake;
+    uint8_t  turn_sig;
 
     uint16_t aux_batt_volt_x10;
     int32_t  batt_current_x10;
@@ -86,5 +89,12 @@ typedef struct
     uint32_t crc32;
 }
 settings_t;
+
+typedef struct
+{
+    uint32_t pid;
+    uint32_t dev;
+}
+query_t;
 
 #endif

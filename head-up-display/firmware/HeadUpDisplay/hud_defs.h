@@ -66,6 +66,15 @@ enum
     HUDANI_VOLTMETER_FADEOUT,
 };
 
+enum
+{
+    GEAR_UNKNOWN = 0,
+    GEAR_PARK    = 0 + 1,
+    GEAR_DRIVE   = 5 + 1,
+    GEAR_NEUTRAL = 6 + 1,
+    GEAR_REVERSE = 7 + 1,
+};
+
 #define MS_TO_RTOS_TICKS(x) ((x) / portTICK_RATE_MS)
 
 #define OBD_PID_CELLVOLT_0  0x0102 // battery cell voltages
@@ -77,7 +86,10 @@ enum
 #define OBD_PID_REALSPEED   0x0100 // real vehicle speed, indoor temperature, outdoor temperature
 #define OBD_PID_MAINPACKET  0x0101 // main data packet
 #define OBD_PID_BATT2NDARY  0x0105 // upper bank cell temperatures, state of health
+#define OBD_PID_THRGEAR     0xE004 // throttle and gear
+#define OBD_PID_BRAKE       0xB008 // brake
 #define OBD_PID_ODOMETER    0xB002
+#define OBD_PID_INDICATORS  0xBC07
 #define OBD_PID_THROTTLE    0x49 // 0x11
 #define OBD_PID_SIMPLESPEED 0x0D
 
